@@ -11,13 +11,14 @@
 
   API version 44 (mpg123 1.25.8)
 
-    This unit is a direct translation of C header file mpg123.h into pascal,
-    it also includes stuff from header file fmt123.h.
-    It is a translation of libmpg123 binding intended for dynamic loading
-    and linking of the library (a DLL).
-    It was translated from mpg123 library of version 1.25.8.
+  More info about mpg123 library: https://www.mpg123.de
 
-  ©František Milt 2018-02-12
+    This unit is a direct translation of C header file mpg123.h into pascal,
+    it also includes stuff from header file fmt123.h. It is a translation of
+    libmpg123 binding intended for dynamic linking and loading of the mpg123
+    library (a DLL).
+
+  ©František Milt 2018-02-13
 
   Version 1.0
 
@@ -28,17 +29,24 @@
   Translation notes:
     - macros were expanded in-place or changed to normal functions
     - enums were not translated to pascal enumerations, they were instead
-      split into a type (only an alias for int - 32bit integer) and a set of
+      split into a type (an alias for int - 32bit integer) and a set of
       constants
-    - some constants were renamed because of symbol name colissions (added
-      underscores at the start of the name)
-    - some function parameters and structure fields were renamed because they
-      colide with pascal reserved words (usually by adding underscore at the
-      start of the name)
+    - some constants were renamed because of symbol name collisions (added
+      underscore at the start of the name)
+    - some function parameters and structure fields were renamed (usually by
+      adding underscore at the start of the name) because they collide with
+      pascal reserved words (to, type, ...)
+    - function with explicit size of offset (file handling routines) are fully
+      defined and transparently available
+    - large-file handling is enabled by default (symbol LARGE_FILES_SUPPORT is
+      defined), meaning type off_t is an alias for off64_t and default functions
+      (without _32 or _64 suffix) are silently calling 64bit-aware external
+      functions
     - mpg123_Initialize automatically calls library function mpg123_init and
       mpg123_Finalize calls mpg123_exit, so there is no need to call them
-      manually
-    - atm, this translation is for Windows OS only
+      explicitly      
+    - all comments are directly copied from the header files, no change was made
+    - current translation is for Windows OS only
 
 ===============================================================================}
 unit mpg123;
@@ -50,6 +58,19 @@ unit mpg123;
 {$IFDEF FPC}
   {$MODE Delphi}
 {$ENDIF}
+
+{
+  LARGE_FILES_SUPPORT
+
+  When defined, type off_t is an alias for off64_t and default file handling
+  functions (those with no suffix) are calling _64 suffixed library functions
+  (e.g. mpg123_open calls lib:mpg123_open_64).
+  When not defined, off_t is declared as long and non-suffixed functions are
+  calling default library functions (e.g. mpg123_open calls lib:mpg123_open).
+
+  Defined by default.
+}
+{$DEFINE LARGE_FILES_SUPPORT}
 
 interface
 
@@ -65,12 +86,21 @@ const
 type
   PPByte = ^PByte;
 
-  int     = Int32;      pint    = ^int;       ppint   = ^pint;
-  long    = Int32;      plong   = ^long;      pplong  = ^plong;
-  ulong   = UInt32;     pulong  = ^ulong;
-  size_t  = PtrUInt;    psize_t = ^size_t;
+  int     = Int32;      pint     = ^int;        ppint     = ^pint;
+  long    = Int32;      plong    = ^long;       pplong    = ^plong;
+  ulong   = UInt32;     pulong   = ^ulong;
+  size_t  = PtrUInt;    psize_t  = ^size_t;
   ssize_t = PtrInt;
-  off_t   = Int32;      poff_t  = ^off_t;     ppoff_t = ^poff_t;
+  off32_t = Int32;      poff32_t = ^off32_t;    ppoff32_t = ^poff32_t;
+  off64_t = Int64;      poff64_t = ^off64_t;    ppoff64_t = ^poff64_t;
+{$IFDEF LARGE_FILES_SUPPORT}
+  off_t   = off64_t;
+{$ELSE}
+  off_t   = long;
+{$ENDIF}                poff_t   = ^off_t;      ppoff_t   = ^poff_t;
+
+const
+  LFS_DEF_SUFFIX = {$IFDEF LARGE_FILES_SUPPORT}'_64'{$ELSE}''{$ENDIF};
 
 (*
   libmpg123: MPEG Audio Decoder library (version 1.25.8)
@@ -112,44 +142,25 @@ type
   mpg123_enc_enum_t = int;
 
 const
-  (* 0000 0000 0000 1111 Some 8 bit  integer encoding. *)
-  MPG123_ENC_8           = $00f;
-  (* 0000 0000 0100 0000 Some 16 bit integer encoding. *)
-  MPG123_ENC_16          = $040;
-  (* 0100 0000 0000 0000 Some 24 bit integer encoding. *)
-  MPG123_ENC_24          = $4000;
-  (* 0000 0001 0000 0000 Some 32 bit integer encoding. *)
-  MPG123_ENC_32          = $100;
-  (* 0000 0000 1000 0000 Some signed integer encoding. *)
-  MPG123_ENC_SIGNED      = $080;
-  (* 0000 1110 0000 0000 Some float encoding. *)
-  MPG123_ENC_FLOAT       = $e00;
-  (* 0000 0000 1101 0000 signed 16 bit *)
-  MPG123_ENC_SIGNED_16   = (MPG123_ENC_16 or MPG123_ENC_SIGNED or $10);
-  (* 0000 0000 0110 0000 unsigned 16 bit *)
-  MPG123_ENC_UNSIGNED_16 = (MPG123_ENC_16 or $20);
-  (* 0000 0000 0000 0001 unsigned 8 bit *)
-  MPG123_ENC_UNSIGNED_8  = $01;
-  (* 0000 0000 1000 0010 signed 8 bit *)
-  MPG123_ENC_SIGNED_8    = (MPG123_ENC_SIGNED or $02);
-  (* 0000 0000 0000 0100 ulaw 8 bit *)
-  MPG123_ENC_ULAW_8      = $04;
-  (* 0000 0000 0000 1000 alaw 8 bit *)
-  MPG123_ENC_ALAW_8      = $08;
-  (* 0001 0001 1000 0000 signed 32 bit *)
-  MPG123_ENC_SIGNED_32   = (MPG123_ENC_32 or MPG123_ENC_SIGNED or $1000);
-  (* 0010 0001 0000 0000 unsigned 32 bit *)
-  MPG123_ENC_UNSIGNED_32 = (MPG123_ENC_32 or $2000);
-  (* 0101 0000 1000 0000 signed 24 bit *)
-  MPG123_ENC_SIGNED_24   = (MPG123_ENC_24 or MPG123_ENC_SIGNED or $1000);
-  (* 0110 0000 0000 0000 unsigned 24 bit *)
-  MPG123_ENC_UNSIGNED_24 = (MPG123_ENC_24 or $2000);
-  (* 0000 0010 0000 0000 32bit float *)
-  MPG123_ENC_FLOAT_32    = $200;
-  (* 0000 0100 0000 0000 64bit float *)
-  MPG123_ENC_FLOAT_64    = $400;
-  (* Any possibly known encoding from the list above. *)
-  MPG123_ENC_ANY         = (MPG123_ENC_SIGNED_16  or MPG123_ENC_UNSIGNED_16 or
+  MPG123_ENC_8           = $00f;                                                (* 0000 0000 0000 1111 Some 8 bit  integer encoding. *)
+  MPG123_ENC_16          = $040;                                                (* 0000 0000 0100 0000 Some 16 bit integer encoding. *)
+  MPG123_ENC_24          = $4000;                                               (* 0100 0000 0000 0000 Some 24 bit integer encoding. *)
+  MPG123_ENC_32          = $100;                                                (* 0000 0001 0000 0000 Some 32 bit integer encoding. *)
+  MPG123_ENC_SIGNED      = $080;                                                (* 0000 0000 1000 0000 Some signed integer encoding. *)
+  MPG123_ENC_FLOAT       = $e00;                                                (* 0000 1110 0000 0000 Some float encoding. *)
+  MPG123_ENC_SIGNED_16   = (MPG123_ENC_16 or MPG123_ENC_SIGNED or $10);         (* 0000 0000 1101 0000 signed 16 bit *)
+  MPG123_ENC_UNSIGNED_16 = (MPG123_ENC_16 or $20);                              (* 0000 0000 0110 0000 unsigned 16 bit *)
+  MPG123_ENC_UNSIGNED_8  = $01;                                                 (* 0000 0000 0000 0001 unsigned 8 bit *)
+  MPG123_ENC_SIGNED_8    = (MPG123_ENC_SIGNED or $02);                          (* 0000 0000 1000 0010 signed 8 bit *)
+  MPG123_ENC_ULAW_8      = $04;                                                 (* 0000 0000 0000 0100 ulaw 8 bit *)
+  MPG123_ENC_ALAW_8      = $08;                                                 (* 0000 0000 0000 1000 alaw 8 bit *)
+  MPG123_ENC_SIGNED_32   = (MPG123_ENC_32 or MPG123_ENC_SIGNED or $1000);       (* 0001 0001 1000 0000 signed 32 bit *)
+  MPG123_ENC_UNSIGNED_32 = (MPG123_ENC_32 or $2000);                            (* 0010 0001 0000 0000 unsigned 32 bit *)
+  MPG123_ENC_SIGNED_24   = (MPG123_ENC_24 or MPG123_ENC_SIGNED or $1000);       (* 0101 0000 1000 0000 signed 24 bit *)
+  MPG123_ENC_UNSIGNED_24 = (MPG123_ENC_24 or $2000);                            (* 0110 0000 0000 0000 unsigned 24 bit *)
+  MPG123_ENC_FLOAT_32    = $200;                                                (* 0000 0010 0000 0000 32bit float *)
+  MPG123_ENC_FLOAT_64    = $400;                                                (* 0000 0100 0000 0000 64bit float *)    
+  MPG123_ENC_ANY         = (MPG123_ENC_SIGNED_16  or MPG123_ENC_UNSIGNED_16 or  (* Any possibly known encoding from the list above. *)
                             MPG123_ENC_UNSIGNED_8 or MPG123_ENC_SIGNED_8 or
                             MPG123_ENC_ULAW_8     or MPG123_ENC_ALAW_8 or
                             MPG123_ENC_SIGNED_32  or MPG123_ENC_UNSIGNED_32 or
@@ -195,6 +206,71 @@ type
  *)
 const
   MPG123_API_VERSION = 44;
+
+(* Simplified large file handling.
+	I used to have a check here that prevents building for a library with conflicting large file setup
+	(application that uses 32 bit offsets with library that uses 64 bits).
+	While that was perfectly fine in an environment where there is one incarnation of the library,
+	it hurt GNU/Linux and Solaris systems with multilib where the distribution fails to provide the
+	correct header matching the 32 bit library (where large files need explicit support) or
+	the 64 bit library (where there is no distinction).
+
+	New approach: When the app defines _FILE_OFFSET_BITS, it wants non-default large file support,
+	and thus functions with added suffix (mpg123_open_64).
+	Any mismatch will be caught at link time because of the _FILE_OFFSET_BITS setting used when
+	building libmpg123. Plus, there's dual mode large file support in mpg123 since 1.12 now.
+	Link failure is not the expected outcome of any half-sane usage anymore.
+
+	More complication: What about client code defining _LARGEFILE64_SOURCE? It might want direct access to the _64 functions, along with the ones without suffix. Well, that's possible now via defining MPG123_NO_LARGENAME and MPG123_LARGESUFFIX, respectively, for disabling or enforcing the suffix names.
+*)
+
+(*
+	Now, the renaming of large file aware functions.
+	By default, it appends underscore _FILE_OFFSET_BITS (so, mpg123_seek_64 for mpg123_seek), if _FILE_OFFSET_BITS is defined. You can force a different suffix via MPG123_LARGESUFFIX (that must include the underscore), or you can just disable the whole mess by defining MPG123_NO_LARGENAME.
+*)
+(*
+********************************************************************************
+        See symbol LARGE_FILES_SUPPORT and translation notes for details
+********************************************************************************
+
+#if (!defined MPG123_NO_LARGENAME) && ((defined _FILE_OFFSET_BITS) || (defined MPG123_LARGESUFFIX))
+
+/* Need some trickery to concatenate the value(s) of the given macro(s). */
+#define MPG123_MACROCAT_REALLY(a, b) a ## b
+#define MPG123_MACROCAT(a, b) MPG123_MACROCAT_REALLY(a, b)
+#ifndef MPG123_LARGESUFFIX
+#define MPG123_LARGESUFFIX MPG123_MACROCAT(_, _FILE_OFFSET_BITS)
+#endif
+#define MPG123_LARGENAME(func) MPG123_MACROCAT(func, MPG123_LARGESUFFIX)
+
+#define mpg123_open         MPG123_LARGENAME(mpg123_open)
+#define mpg123_open_fd      MPG123_LARGENAME(mpg123_open_fd)
+#define mpg123_open_handle  MPG123_LARGENAME(mpg123_open_handle)
+#define mpg123_framebyframe_decode MPG123_LARGENAME(mpg123_framebyframe_decode)
+#define mpg123_decode_frame MPG123_LARGENAME(mpg123_decode_frame)
+#define mpg123_tell         MPG123_LARGENAME(mpg123_tell)
+#define mpg123_tellframe    MPG123_LARGENAME(mpg123_tellframe)
+#define mpg123_tell_stream  MPG123_LARGENAME(mpg123_tell_stream)
+#define mpg123_seek         MPG123_LARGENAME(mpg123_seek)
+#define mpg123_feedseek     MPG123_LARGENAME(mpg123_feedseek)
+#define mpg123_seek_frame   MPG123_LARGENAME(mpg123_seek_frame)
+#define mpg123_timeframe    MPG123_LARGENAME(mpg123_timeframe)
+#define mpg123_index        MPG123_LARGENAME(mpg123_index)
+#define mpg123_set_index    MPG123_LARGENAME(mpg123_set_index)
+#define mpg123_position     MPG123_LARGENAME(mpg123_position)
+#define mpg123_length       MPG123_LARGENAME(mpg123_length)
+#define mpg123_framelength  MPG123_LARGENAME(mpg123_framelength)
+#define mpg123_set_filesize MPG123_LARGENAME(mpg123_set_filesize)
+#define mpg123_replace_reader MPG123_LARGENAME(mpg123_replace_reader)
+#define mpg123_replace_reader_handle MPG123_LARGENAME(mpg123_replace_reader_handle)
+#define mpg123_framepos MPG123_LARGENAME(mpg123_framepos)
+
+#endif /* largefile hackery */
+
+********************************************************************************
+        See symbol LARGE_FILES_SUPPORT and translation notes for details
+********************************************************************************
+*)
 
 (** \defgroup mpg123_init mpg123 library and handle setup
  *
@@ -632,6 +708,8 @@ var
  *  \return MPG123_OK on success
  *)
   mpg123_open: Function(mh: mpg123_handle_p; path: PAnsiChar): int; cdecl;
+  mpg123_open_32: Function(mh: mpg123_handle_p; path: PAnsiChar): int; cdecl;
+  mpg123_open_64: Function(mh: mpg123_handle_p; path: PAnsiChar): int; cdecl;
 
 (** Use an already opened file descriptor as the bitstream input
  *  mpg123_close() will _not_ close the file descriptor.
@@ -640,6 +718,8 @@ var
  *  \return MPG123_OK on success
  *)
   mpg123_open_fd: Function(mh: mpg123_handle_p; fd: int): int; cdecl;
+  mpg123_open_fd_32: Function(mh: mpg123_handle_p; fd: int): int; cdecl;
+  mpg123_open_fd_64: Function(mh: mpg123_handle_p; fd: int): int; cdecl;
 
 (** Use an opaque handle as bitstream input. This works only with the
  *  replaced I/O from mpg123_replace_reader_handle()!
@@ -649,6 +729,8 @@ var
  *  \return MPG123_OK on success
  *)
   mpg123_open_handle: Function(mh: mpg123_handle_p; iohandle: Pointer): int; cdecl;
+  mpg123_open_handle_32: Function(mh: mpg123_handle_p; iohandle: Pointer): int; cdecl;
+  mpg123_open_handle_64: Function(mh: mpg123_handle_p; iohandle: Pointer): int; cdecl;
 
 (** Open a new bitstream and prepare for direct feeding
  *  This works together with mpg123_decode(); you are responsible for reading and feeding the input bitstream.
@@ -707,6 +789,8 @@ var
  *  \return MPG123_OK or error/message code
  *)
   mpg123_decode_frame: Function(mh: mpg123_handle_p; num: poff_t; audio: PPByte; bytes: psize_t): int; cdecl;
+  mpg123_decode_frame_32: Function(mh: mpg123_handle_p; num: poff32_t; audio: PPByte; bytes: psize_t): int; cdecl;
+  mpg123_decode_frame_64: Function(mh: mpg123_handle_p; num: poff64_t; audio: PPByte; bytes: psize_t): int; cdecl;
 
 (** Decode current MPEG frame to internal buffer.
  * Warning: This is experimental API that might change in future releases!
@@ -718,6 +802,8 @@ var
  *  \return MPG123_OK or error/message code
  *)
   mpg123_framebyframe_decode: Function(mh: mpg123_handle_p; num: poff_t; audio: PPByte; bytes: psize_t): int; cdecl;
+  mpg123_framebyframe_decode_32: Function(mh: mpg123_handle_p; num: poff32_t; audio: PPByte; bytes: psize_t): int; cdecl;
+  mpg123_framebyframe_decode_64: Function(mh: mpg123_handle_p; num: poff64_t; audio: PPByte; bytes: psize_t): int; cdecl;
 
 (** Find, read and parse the next mp3 frame
  * Warning: This is experimental API that might change in future releases!
@@ -752,6 +838,8 @@ var
  * \return byte offset in stream
  *)
   mpg123_framepos: Function(mh: mpg123_handle_p): off_t; cdecl;
+  mpg123_framepos_32: Function(mh: mpg123_handle_p): off32_t; cdecl;
+  mpg123_framepos_64: Function(mh: mpg123_handle_p): off64_t; cdecl;
 
 (*@}*)
 
@@ -782,18 +870,24 @@ var
  *  \return sample offset or MPG123_ERR (null handle)
  *)
   mpg123_tell: Function(mh: mpg123_handle_p): off_t; cdecl;
+  mpg123_tell_32: Function(mh: mpg123_handle_p): off32_t; cdecl;
+  mpg123_tell_64: Function(mh: mpg123_handle_p): off64_t; cdecl;
 
 (** Returns the frame number that the next read will give you data from.
  *  \param mh handle
  *  \return frame offset or MPG123_ERR (null handle)
  *)
   mpg123_tellframe: Function(mh: mpg123_handle_p): off_t; cdecl;
+  mpg123_tellframe_32: Function(mh: mpg123_handle_p): off32_t; cdecl;
+  mpg123_tellframe_64: Function(mh: mpg123_handle_p): off64_t; cdecl;
 
 (** Returns the current byte offset in the input stream.
  *  \param mh handle
  *  \return byte offset or MPG123_ERR (null handle)
  *)
   mpg123_tell_stream: Function(mh: mpg123_handle_p): off_t; cdecl;
+  mpg123_tell_stream_32: Function(mh: mpg123_handle_p): off32_t; cdecl;
+  mpg123_tell_stream_64: Function(mh: mpg123_handle_p): off64_t; cdecl;
 
 (** Seek to a desired sample offset.
  *  Usage is modelled afer the standard lseek().
@@ -803,6 +897,8 @@ var
  * \return The resulting offset >= 0 or error/message code
  *)
   mpg123_seek: Function(mh: mpg123_handle_p; samleoff: off_t; whence: int): off_t; cdecl;
+  mpg123_seek_32: Function(mh: mpg123_handle_p; samleoff: off32_t; whence: int): off32_t; cdecl;
+  mpg123_seek_64: Function(mh: mpg123_handle_p; samleoff: off64_t; whence: int): off64_t; cdecl;
 
 (** Seek to a desired sample offset in data feeding mode. 
  *  This just prepares things to be right only if you ensure that the next chunk of input data will be from input_offset byte position.
@@ -813,6 +909,8 @@ var
  *                      next time data is fed to mpg123_decode().
  *  \return The resulting offset >= 0 or error/message code *)
   mpg123_feedseek: Function(mh: mpg123_handle_p; samleoff: off_t; whence: int; input_offset: poff_t): off_t; cdecl;
+  mpg123_feedseek_32: Function(mh: mpg123_handle_p; samleoff: off32_t; whence: int; input_offset: poff32_t): off32_t; cdecl;
+  mpg123_feedseek_64: Function(mh: mpg123_handle_p; samleoff: off64_t; whence: int; input_offset: poff64_t): off64_t; cdecl;
 
 (** Seek to a desired MPEG frame offset.
  *  Usage is modelled afer the standard lseek().
@@ -821,11 +919,15 @@ var
  * \param whence one of SEEK_SET, SEEK_CUR or SEEK_END
  * \return The resulting offset >= 0 or error/message code *)
   mpg123_seek_frame: Function(mh: mpg123_handle_p; frameoff: off_t; whence: int): off_t; cdecl;
+  mpg123_seek_frame_32: Function(mh: mpg123_handle_p; frameoff: off32_t; whence: int): off32_t; cdecl;
+  mpg123_seek_frame_64: Function(mh: mpg123_handle_p; frameoff: off64_t; whence: int): off64_t; cdecl;
 
 (** Return a MPEG frame offset corresponding to an offset in seconds.
  *  This assumes that the samples per frame do not change in the file/stream, which is a good assumption for any sane file/stream only.
  *  \return frame offset >= 0 or error/message code *)
   mpg123_timeframe: Function(mh: mpg123_handle_p; dec: Double): off_t; cdecl;
+  mpg123_timeframe_32: Function(mh: mpg123_handle_p; dec: Double): off32_t; cdecl;
+  mpg123_timeframe_64: Function(mh: mpg123_handle_p; dec: Double): off64_t; cdecl;
 
 (** Give access to the frame index table that is managed for seeking.
  *  You are asked not to modify the values... Use mpg123_set_index to set the
@@ -837,6 +939,8 @@ var
  *  \return MPG123_OK on success
  *)
   mpg123_index: Function(mh: mpg123_handle_p; offsets: ppoff_t; step: poff_t; fill: psize_t): int; cdecl;
+  mpg123_index_32: Function(mh: mpg123_handle_p; offsets: ppoff32_t; step: poff32_t; fill: psize_t): int; cdecl;
+  mpg123_index_64: Function(mh: mpg123_handle_p; offsets: ppoff64_t; step: poff64_t; fill: psize_t): int; cdecl;
 
 (** Set the frame index table
  *  Setting offsets to NULL and fill > 0 will allocate fill entries. Setting offsets
@@ -848,6 +952,8 @@ var
  *  \return MPG123_OK on success
  *)
   mpg123_set_index: Function(mh: mpg123_handle_p; offsets: poff_t; step: off_t; fill: size_t): int; cdecl;
+  mpg123_set_index_32: Function(mh: mpg123_handle_p; offsets: poff32_t; step: off32_t; fill: size_t): int; cdecl;
+  mpg123_set_index_64: Function(mh: mpg123_handle_p; offsets: poff64_t; step: off64_t; fill: size_t): int; cdecl;
 
 (** An old crutch to keep old mpg123 binaries happy.
  *  WARNING: This function is there only to avoid runtime linking errors with
@@ -857,6 +963,8 @@ var
  *  be purged from the library.
  *)
   mpg123_position: Function(mh: mpg123_handle_p; frame_offset, buffered_bytes: off_t; current_frame, frames_left: poff_t; current_seconds, seconds_left: PDouble): int; cdecl;
+  mpg123_position_32: Function(mh: mpg123_handle_p; frame_offset, buffered_bytes: off32_t; current_frame, frames_left: poff32_t; current_seconds, seconds_left: PDouble): int; cdecl;
+  mpg123_position_64: Function(mh: mpg123_handle_p; frame_offset, buffered_bytes: off64_t; current_frame, frames_left: poff64_t; current_seconds, seconds_left: PDouble): int; cdecl;
 
 (*@}*)
 
@@ -1021,12 +1129,16 @@ var
  * \return length >= 0 or MPG123_ERR if there is no length guess possible.
  *)
   mpg123_framelength: Function(mh: mpg123_handle_p): off_t; cdecl;
+  mpg123_framelength_32: Function(mh: mpg123_handle_p): off32_t; cdecl;
+  mpg123_framelength_64: Function(mh: mpg123_handle_p): off64_t; cdecl;
 
 (** Return, if possible, the full (expected) length of current track in samples.
  * \param mh handle
  * \return length >= 0 or MPG123_ERR if there is no length guess possible.
  *)
   mpg123_length: Function(mh: mpg123_handle_p): off_t; cdecl;
+  mpg123_length_32: Function(mh: mpg123_handle_p): off32_t; cdecl;
+  mpg123_length_64: Function(mh: mpg123_handle_p): off64_t; cdecl;
 
 (** Override the value for file size in bytes.
  *  Useful for getting sensible track length values in feed mode or for HTTP streams.
@@ -1035,6 +1147,8 @@ var
  *  \return MPG123_OK on success
  *)
   mpg123_set_filesize: Function(mh: mpg123_handle_p; size: off_t): int; cdecl;
+  mpg123_set_filesize_32: Function(mh: mpg123_handle_p; size: off32_t): int; cdecl;
+  mpg123_set_filesize_64: Function(mh: mpg123_handle_p; size: off64_t): int; cdecl;
 
 (** Get MPEG frame duration in seconds.
  *  \param mh handle
@@ -1474,12 +1588,16 @@ var
 
 // callbacks procedural types
 type
-  TIntRead = Function(DataSource: int; Buffer: Pointer; Size: size_t): ssize_t; cdecl;
-  TIntSeek = Function(DataSource: int; Offset: off_t; Whence: int): off_t; cdecl;
+  TIntRead   = Function(DataSource: int; Buffer: Pointer; Size: size_t): ssize_t; cdecl;
+  TIntSeek   = Function(DataSource: int; Offset: off_t; Whence: int): off_t; cdecl;
+  TIntSeek32 = Function(DataSource: int; Offset: off32_t; Whence: int): off32_t; cdecl;
+  TIntSeek64 = Function(DataSource: int; Offset: off64_t; Whence: int): off64_t; cdecl;
 
-  TPtrRead  = Function(DataSource: Pointer; Buffer: Pointer; Size: size_t): ssize_t; cdecl;
-  TPtrSeek  = Function(DataSource: Pointer; Offset: off_t; Whence: int): off_t; cdecl;
-  TPtrClean = procedure(DataSource: Pointer); cdecl;
+  TPtrRead   = Function(DataSource: Pointer; Buffer: Pointer; Size: size_t): ssize_t; cdecl;
+  TPtrSeek   = Function(DataSource: Pointer; Offset: off_t; Whence: int): off_t; cdecl;
+  TPtrSeek32 = Function(DataSource: Pointer; Offset: off32_t; Whence: int): off32_t; cdecl;
+  TPtrSeek64 = Function(DataSource: Pointer; Offset: off64_t; Whence: int): off64_t; cdecl;
+  TPtrClean  = procedure(DataSource: Pointer); cdecl;
 
 (** Replace default internal buffer with user-supplied buffer.
   * Instead of working on it's own private buffer, mpg123 will directly use the one you provide for storing decoded audio.
@@ -1515,6 +1633,8 @@ var
  * \return MPG123_OK on success
  *)
   mpg123_replace_reader: Function(mh: mpg123_handle_p; r_read: TIntRead; r_lseek: TIntSeek): int; cdecl;
+  mpg123_replace_reader_32: Function(mh: mpg123_handle_p; r_read: TIntRead; r_lseek: TIntSeek32): int; cdecl;
+  mpg123_replace_reader_64: Function(mh: mpg123_handle_p; r_read: TIntRead; r_lseek: TIntSeek64): int; cdecl;
 
 (** Replace I/O functions with your own ones operating on some kind of
  *  handle instead of integer descriptors.
@@ -1531,13 +1651,15 @@ var
  * \return MPG123_OK on success
  *)
   mpg123_replace_reader_handle: Function(mh: mpg123_handle_p; r_read: TPtrRead; r_lseek: TPtrSeek; cleanup: TPtrClean): int; cdecl;
+  mpg123_replace_reader_handle_32: Function(mh: mpg123_handle_p; r_read: TPtrRead; r_lseek: TPtrSeek32; cleanup: TPtrClean): int; cdecl;
+  mpg123_replace_reader_handle_64: Function(mh: mpg123_handle_p; r_read: TPtrRead; r_lseek: TPtrSeek64; cleanup: TPtrClean): int; cdecl;
 
 (* @} *)
 
 //==============================================================================
 
 const
-  mpg123_LibFileName = 'mpg123.dll';
+  mpg123_LibFileName = 'libmpg123-0.dll';
 
 Function mpg123_Initialize(const LibPath: String = mpg123_LibFileName): Boolean;
 procedure mpg123_Finalize;
@@ -1588,117 +1710,159 @@ If mpg123_LibHandle = 0 then
     If mpg123_LibHandle <> 0 then
       begin
         // mpg123 library and handle setup - - - - - - - - - - - - - - - - - - -
-        mpg123_init                  := GetAndCheckProc('mpg123_init');
-        mpg123_exit                  := GetAndCheckProc('mpg123_exit');
-        mpg123_new                   := GetAndCheckProc('mpg123_new');
-        mpg123_delete                := GetAndCheckProc('mpg123_delete');            
+        mpg123_init                     := GetAndCheckProc('mpg123_init');
+        mpg123_exit                     := GetAndCheckProc('mpg123_exit');
+        mpg123_new                      := GetAndCheckProc('mpg123_new');
+        mpg123_delete                   := GetAndCheckProc('mpg123_delete');
         // mpg123 params and features  - - - - - - - - - - - - - - - - - - - - -
-        mpg123_param                 := GetAndCheckProc('mpg123_param');
-        mpg123_getparam              := GetAndCheckProc('mpg123_getparam');
-        mpg123_feature               := GetAndCheckProc('mpg123_feature');
+        mpg123_param                    := GetAndCheckProc('mpg123_param');
+        mpg123_getparam                 := GetAndCheckProc('mpg123_getparam');
+        mpg123_feature                  := GetAndCheckProc('mpg123_feature');
         // mpg123 error handling - - - - - - - - - - - - - - - - - - - - - - - -
-        mpg123_plain_strerror        := GetAndCheckProc('mpg123_plain_strerror');
-        mpg123_strerror              := GetAndCheckProc('mpg123_strerror');
-        mpg123_errcode               := GetAndCheckProc('mpg123_errcode');
+        mpg123_plain_strerror           := GetAndCheckProc('mpg123_plain_strerror');
+        mpg123_strerror                 := GetAndCheckProc('mpg123_strerror');
+        mpg123_errcode                  := GetAndCheckProc('mpg123_errcode');
         // mpg123 decoder selection  - - - - - - - - - - - - - - - - - - - - - -
-        mpg123_decoders              := GetAndCheckProc('mpg123_decoders');
-        mpg123_supported_decoders    := GetAndCheckProc('mpg123_supported_decoders');
-        mpg123_decoder               := GetAndCheckProc('mpg123_decoder');
-        mpg123_current_decoder       := GetAndCheckProc('mpg123_current_decoder');
+        mpg123_decoders                 := GetAndCheckProc('mpg123_decoders');
+        mpg123_supported_decoders       := GetAndCheckProc('mpg123_supported_decoders');
+        mpg123_decoder                  := GetAndCheckProc('mpg123_decoder');
+        mpg123_current_decoder          := GetAndCheckProc('mpg123_current_decoder');
         // mpg123 output audio format  - - - - - - - - - - - - - - - - - - - - -
-        mpg123_rates                 := GetAndCheckProc('mpg123_rates');
-        mpg123_encodings             := GetAndCheckProc('mpg123_encodings');
-        mpg123_encsize               := GetAndCheckProc('mpg123_encsize');
-        mpg123_format_none           := GetAndCheckProc('mpg123_format_none');
-        mpg123_format_all            := GetAndCheckProc('mpg123_format_all');
-        mpg123_format                := GetAndCheckProc('mpg123_format');
-        mpg123_format_support        := GetAndCheckProc('mpg123_format_support');
-        mpg123_getformat             := GetAndCheckProc('mpg123_getformat');
-        mpg123_getformat2            := GetAndCheckProc('mpg123_getformat2');
+        mpg123_rates                    := GetAndCheckProc('mpg123_rates');
+        mpg123_encodings                := GetAndCheckProc('mpg123_encodings');
+        mpg123_encsize                  := GetAndCheckProc('mpg123_encsize');
+        mpg123_format_none              := GetAndCheckProc('mpg123_format_none');
+        mpg123_format_all               := GetAndCheckProc('mpg123_format_all');
+        mpg123_format                   := GetAndCheckProc('mpg123_format');
+        mpg123_format_support           := GetAndCheckProc('mpg123_format_support');
+        mpg123_getformat                := GetAndCheckProc('mpg123_getformat');
+        mpg123_getformat2               := GetAndCheckProc('mpg123_getformat2');
         // mpg123 file input and decoding  - - - - - - - - - - - - - - - - - - -
-        mpg123_open                  := GetAndCheckProc('mpg123_open');
-        mpg123_open_fd               := GetAndCheckProc('mpg123_open_fd');
-        mpg123_open_handle           := GetAndCheckProc('mpg123_open_handle');
-        mpg123_open_feed             := GetAndCheckProc('mpg123_open_feed');
-        mpg123_close                 := GetAndCheckProc('mpg123_close');
-        mpg123_read                  := GetAndCheckProc('mpg123_read');
-        mpg123_feed                  := GetAndCheckProc('mpg123_feed');
-        mpg123_decode                := GetAndCheckProc('mpg123_decode');
-        mpg123_decode_frame          := GetAndCheckProc('mpg123_decode_frame');
-        mpg123_framebyframe_decode   := GetAndCheckProc('mpg123_framebyframe_decode');
-        mpg123_framebyframe_next     := GetAndCheckProc('mpg123_framebyframe_next');
-        mpg123_framedata             := GetAndCheckProc('mpg123_framedata');
-        mpg123_framepos              := GetAndCheckProc('mpg123_framepos');
+        mpg123_open                     := GetAndCheckProc('mpg123_open' + LFS_DEF_SUFFIX);
+        mpg123_open_32                  := GetAndCheckProc('mpg123_open_32');
+        mpg123_open_64                  := GetAndCheckProc('mpg123_open_64');
+        mpg123_open_fd                  := GetAndCheckProc('mpg123_open_fd' + LFS_DEF_SUFFIX);
+        mpg123_open_fd_32               := GetAndCheckProc('mpg123_open_fd_32');
+        mpg123_open_fd_64               := GetAndCheckProc('mpg123_open_fd_64');
+        mpg123_open_handle              := GetAndCheckProc('mpg123_open_handle' + LFS_DEF_SUFFIX);
+        mpg123_open_handle_32           := GetAndCheckProc('mpg123_open_handle_32');
+        mpg123_open_handle_64           := GetAndCheckProc('mpg123_open_handle_64');
+        mpg123_open_feed                := GetAndCheckProc('mpg123_open_feed');
+        mpg123_close                    := GetAndCheckProc('mpg123_close');
+        mpg123_read                     := GetAndCheckProc('mpg123_read');
+        mpg123_feed                     := GetAndCheckProc('mpg123_feed');
+        mpg123_decode                   := GetAndCheckProc('mpg123_decode');
+        mpg123_decode_frame             := GetAndCheckProc('mpg123_decode_frame' + LFS_DEF_SUFFIX);
+        mpg123_decode_frame_32          := GetAndCheckProc('mpg123_decode_frame_32');
+        mpg123_decode_frame_64          := GetAndCheckProc('mpg123_decode_frame_64');
+        mpg123_framebyframe_decode      := GetAndCheckProc('mpg123_framebyframe_decode' + LFS_DEF_SUFFIX);
+        mpg123_framebyframe_decode_32   := GetAndCheckProc('mpg123_framebyframe_decode_32');
+        mpg123_framebyframe_decode_64   := GetAndCheckProc('mpg123_framebyframe_decode_64');
+        mpg123_framebyframe_next        := GetAndCheckProc('mpg123_framebyframe_next');
+        mpg123_framedata                := GetAndCheckProc('mpg123_framedata');
+        mpg123_framepos                 := GetAndCheckProc('mpg123_framepos' + LFS_DEF_SUFFIX);
+        mpg123_framepos_32              := GetAndCheckProc('mpg123_framepos_32');
+        mpg123_framepos_64              := GetAndCheckProc('mpg123_framepos_64');
         // mpg123 position and seeking - - - - - - - - - - - - - - - - - - - - -
-        mpg123_tell                  := GetAndCheckProc('mpg123_tell');
-        mpg123_tellframe             := GetAndCheckProc('mpg123_tellframe');
-        mpg123_tell_stream           := GetAndCheckProc('mpg123_tell_stream');
-        mpg123_seek                  := GetAndCheckProc('mpg123_seek');
-        mpg123_feedseek              := GetAndCheckProc('mpg123_feedseek');
-        mpg123_seek_frame            := GetAndCheckProc('mpg123_seek_frame');
-        mpg123_timeframe             := GetAndCheckProc('mpg123_timeframe');
-        mpg123_index                 := GetAndCheckProc('mpg123_index');
-        mpg123_set_index             := GetAndCheckProc('mpg123_set_index');
-        mpg123_position              := GetAndCheckProc('mpg123_position');
+        mpg123_tell                     := GetAndCheckProc('mpg123_tell' + LFS_DEF_SUFFIX);
+        mpg123_tell_32                  := GetAndCheckProc('mpg123_tell_32');
+        mpg123_tell_64                  := GetAndCheckProc('mpg123_tell_64');
+        mpg123_tellframe                := GetAndCheckProc('mpg123_tellframe' + LFS_DEF_SUFFIX);
+        mpg123_tellframe_32             := GetAndCheckProc('mpg123_tellframe_32');
+        mpg123_tellframe_64             := GetAndCheckProc('mpg123_tellframe_64');
+        mpg123_tell_stream              := GetAndCheckProc('mpg123_tell_stream' + LFS_DEF_SUFFIX);
+        mpg123_tell_stream_32           := GetAndCheckProc('mpg123_tell_stream_32');
+        mpg123_tell_stream_64           := GetAndCheckProc('mpg123_tell_stream_64');
+        mpg123_seek                     := GetAndCheckProc('mpg123_seek' + LFS_DEF_SUFFIX);
+        mpg123_seek_32                  := GetAndCheckProc('mpg123_seek_32');
+        mpg123_seek_64                  := GetAndCheckProc('mpg123_seek_64');
+        mpg123_feedseek                 := GetAndCheckProc('mpg123_feedseek' + LFS_DEF_SUFFIX);
+        mpg123_feedseek_32              := GetAndCheckProc('mpg123_feedseek_32');
+        mpg123_feedseek_64              := GetAndCheckProc('mpg123_feedseek_64');
+        mpg123_seek_frame               := GetAndCheckProc('mpg123_seek_frame' + LFS_DEF_SUFFIX);
+        mpg123_seek_frame_32            := GetAndCheckProc('mpg123_seek_frame_32');
+        mpg123_seek_frame_64            := GetAndCheckProc('mpg123_seek_frame_64');
+        mpg123_timeframe                := GetAndCheckProc('mpg123_timeframe' + LFS_DEF_SUFFIX);
+        mpg123_timeframe_32             := GetAndCheckProc('mpg123_timeframe_32');
+        mpg123_timeframe_64             := GetAndCheckProc('mpg123_timeframe_64');
+        mpg123_index                    := GetAndCheckProc('mpg123_index' + LFS_DEF_SUFFIX);
+        mpg123_index_32                 := GetAndCheckProc('mpg123_index_32');
+        mpg123_index_64                 := GetAndCheckProc('mpg123_index_64');
+        mpg123_set_index                := GetAndCheckProc('mpg123_set_index' + LFS_DEF_SUFFIX);
+        mpg123_set_index_32             := GetAndCheckProc('mpg123_set_index_32');
+        mpg123_set_index_64             := GetAndCheckProc('mpg123_set_index_64');
+        mpg123_position                 := GetAndCheckProc('mpg123_position' + LFS_DEF_SUFFIX);
+        mpg123_position_32              := GetAndCheckProc('mpg123_position_32');
+        mpg123_position_64              := GetAndCheckProc('mpg123_position_64');
         // mpg123 volume and equalizer - - - - - - - - - - - - - - - - - - - - -
-        mpg123_eq                    := GetAndCheckProc('mpg123_eq');
-        mpg123_geteq                 := GetAndCheckProc('mpg123_geteq');
-        mpg123_reset_eq              := GetAndCheckProc('mpg123_reset_eq');
-        mpg123_volume                := GetAndCheckProc('mpg123_volume');
-        mpg123_volume_change         := GetAndCheckProc('mpg123_volume_change');
-        mpg123_getvolume             := GetAndCheckProc('mpg123_getvolume');
+        mpg123_eq                       := GetAndCheckProc('mpg123_eq');
+        mpg123_geteq                    := GetAndCheckProc('mpg123_geteq');
+        mpg123_reset_eq                 := GetAndCheckProc('mpg123_reset_eq');
+        mpg123_volume                   := GetAndCheckProc('mpg123_volume');
+        mpg123_volume_change            := GetAndCheckProc('mpg123_volume_change');
+        mpg123_getvolume                := GetAndCheckProc('mpg123_getvolume');
         // mpg123 status and information - - - - - - - - - - - - - - - - - - - -
-        mpg123_info                  := GetAndCheckProc('mpg123_info');
-        mpg123_safe_buffer           := GetAndCheckProc('mpg123_safe_buffer');
-        mpg123_scan                  := GetAndCheckProc('mpg123_scan');
-        mpg123_framelength           := GetAndCheckProc('mpg123_framelength');
-        mpg123_length                := GetAndCheckProc('mpg123_length');
-        mpg123_set_filesize          := GetAndCheckProc('mpg123_set_filesize');
-        mpg123_tpf                   := GetAndCheckProc('mpg123_tpf');
-        mpg123_spf                   := GetAndCheckProc('mpg123_spf');
-        mpg123_clip                  := GetAndCheckProc('mpg123_clip');
+        mpg123_info                     := GetAndCheckProc('mpg123_info');
+        mpg123_safe_buffer              := GetAndCheckProc('mpg123_safe_buffer');
+        mpg123_scan                     := GetAndCheckProc('mpg123_scan');
+        mpg123_framelength              := GetAndCheckProc('mpg123_framelength' + LFS_DEF_SUFFIX);
+        mpg123_framelength_32           := GetAndCheckProc('mpg123_framelength_32');
+        mpg123_framelength_64           := GetAndCheckProc('mpg123_framelength_64');
+        mpg123_length                   := GetAndCheckProc('mpg123_length' + LFS_DEF_SUFFIX);
+        mpg123_length_32                := GetAndCheckProc('mpg123_length_32');
+        mpg123_length_64                := GetAndCheckProc('mpg123_length_64');
+        mpg123_set_filesize             := GetAndCheckProc('mpg123_set_filesize' + LFS_DEF_SUFFIX);
+        mpg123_set_filesize_32          := GetAndCheckProc('mpg123_set_filesize_32');
+        mpg123_set_filesize_64          := GetAndCheckProc('mpg123_set_filesize_64');
+        mpg123_tpf                      := GetAndCheckProc('mpg123_tpf');
+        mpg123_spf                      := GetAndCheckProc('mpg123_spf');
+        mpg123_clip                     := GetAndCheckProc('mpg123_clip');
         // mpg123 decoder/stream state information - - - - - - - - - - - - - - -
-        mpg123_getstate              := GetAndCheckProc('mpg123_getstate');
+        mpg123_getstate                 := GetAndCheckProc('mpg123_getstate');
         // mpg123 string handling functions  - - - - - - - - - - - - - - - - - -
-        mpg123_init_string           := GetAndCheckProc('mpg123_init_string');
-        mpg123_free_string           := GetAndCheckProc('mpg123_free_string');
-        mpg123_resize_string         := GetAndCheckProc('mpg123_resize_string');
-        mpg123_grow_string           := GetAndCheckProc('mpg123_grow_string');
-        mpg123_copy_string           := GetAndCheckProc('mpg123_copy_string');
-        mpg123_add_string            := GetAndCheckProc('mpg123_add_string');
-        mpg123_add_substring         := GetAndCheckProc('mpg123_add_substring');
-        mpg123_set_string            := GetAndCheckProc('mpg123_set_string');
-        mpg123_set_substring         := GetAndCheckProc('mpg123_set_substring');
-        mpg123_strlen                := GetAndCheckProc('mpg123_strlen');
-        mpg123_chomp_string          := GetAndCheckProc('mpg123_chomp_string');
+        mpg123_init_string              := GetAndCheckProc('mpg123_init_string');
+        mpg123_free_string              := GetAndCheckProc('mpg123_free_string');
+        mpg123_resize_string            := GetAndCheckProc('mpg123_resize_string');
+        mpg123_grow_string              := GetAndCheckProc('mpg123_grow_string');
+        mpg123_copy_string              := GetAndCheckProc('mpg123_copy_string');
+        mpg123_add_string               := GetAndCheckProc('mpg123_add_string');
+        mpg123_add_substring            := GetAndCheckProc('mpg123_add_substring');
+        mpg123_set_string               := GetAndCheckProc('mpg123_set_string');
+        mpg123_set_substring            := GetAndCheckProc('mpg123_set_substring');
+        mpg123_strlen                   := GetAndCheckProc('mpg123_strlen');
+        mpg123_chomp_string             := GetAndCheckProc('mpg123_chomp_string');
         // mpg123 text encodings - - - - - - - - - - - - - - - - - - - - - - - -
-        mpg123_enc_from_id3          := GetAndCheckProc('mpg123_enc_from_id3');
-        mpg123_store_utf8            := GetAndCheckProc('mpg123_store_utf8');
+        mpg123_enc_from_id3             := GetAndCheckProc('mpg123_enc_from_id3');
+        mpg123_store_utf8               := GetAndCheckProc('mpg123_store_utf8');
         // mpg123 metadata handling  - - - - - - - - - - - - - - - - - - - - - -
-        mpg123_meta_check            := GetAndCheckProc('mpg123_meta_check');
-        mpg123_meta_free             := GetAndCheckProc('mpg123_meta_free');
-        mpg123_id3                   := GetAndCheckProc('mpg123_id3');
-        mpg123_icy                   := GetAndCheckProc('mpg123_icy');
-        mpg123_icy2utf8              := GetAndCheckProc('mpg123_icy2utf8');
+        mpg123_meta_check               := GetAndCheckProc('mpg123_meta_check');
+        mpg123_meta_free                := GetAndCheckProc('mpg123_meta_free');
+        mpg123_id3                      := GetAndCheckProc('mpg123_id3');
+        mpg123_icy                      := GetAndCheckProc('mpg123_icy');
+        mpg123_icy2utf8                 := GetAndCheckProc('mpg123_icy2utf8');
         // mpg123 advanced parameter API - - - - - - - - - - - - - - - - - - - -
-        mpg123_parnew                := GetAndCheckProc('mpg123_parnew');
-        mpg123_new_pars              := GetAndCheckProc('mpg123_new_pars');
-        mpg123_delete_pars           := GetAndCheckProc('mpg123_delete_pars');
-        mpg123_fmt_none              := GetAndCheckProc('mpg123_fmt_none');
-        mpg123_fmt_all               := GetAndCheckProc('mpg123_fmt_all');
-        mpg123_fmt                   := GetAndCheckProc('mpg123_fmt');
-        mpg123_fmt_support           := GetAndCheckProc('mpg123_fmt_support');
-        mpg123_par                   := GetAndCheckProc('mpg123_par');
-        mpg123_getpar                := GetAndCheckProc('mpg123_getpar');
+        mpg123_parnew                   := GetAndCheckProc('mpg123_parnew');
+        mpg123_new_pars                 := GetAndCheckProc('mpg123_new_pars');
+        mpg123_delete_pars              := GetAndCheckProc('mpg123_delete_pars');
+        mpg123_fmt_none                 := GetAndCheckProc('mpg123_fmt_none');
+        mpg123_fmt_all                  := GetAndCheckProc('mpg123_fmt_all');
+        mpg123_fmt                      := GetAndCheckProc('mpg123_fmt');
+        mpg123_fmt_support              := GetAndCheckProc('mpg123_fmt_support');
+        mpg123_par                      := GetAndCheckProc('mpg123_par');
+        mpg123_getpar                   := GetAndCheckProc('mpg123_getpar');
         // mpg123 low level I/O  - - - - - - - - - - - - - - - - - - - - - - - -
-        mpg123_replace_buffer        := GetAndCheckProc('mpg123_replace_buffer');
-        mpg123_outblock              := GetAndCheckProc('mpg123_outblock');
-        mpg123_replace_reader        := GetAndCheckProc('mpg123_replace_reader');
-        mpg123_replace_reader_handle := GetAndCheckProc('mpg123_replace_reader_handle');
+        mpg123_replace_buffer           := GetAndCheckProc('mpg123_replace_buffer');
+        mpg123_outblock                 := GetAndCheckProc('mpg123_outblock');
+        mpg123_replace_reader           := GetAndCheckProc('mpg123_replace_reader' + LFS_DEF_SUFFIX);
+        mpg123_replace_reader_32        := GetAndCheckProc('mpg123_replace_reader_32');
+        mpg123_replace_reader_64        := GetAndCheckProc('mpg123_replace_reader_64');
+        mpg123_replace_reader_handle    := GetAndCheckProc('mpg123_replace_reader_handle' + LFS_DEF_SUFFIX);
+        mpg123_replace_reader_handle_32 := GetAndCheckProc('mpg123_replace_reader_handle_32');
+        mpg123_replace_reader_handle_64 := GetAndCheckProc('mpg123_replace_reader_handle_64');
         // internal init and result
         Result := mpg123_init = MPG123_OK;
       end
-    else Result := False;  
+    else Result := False;
   end
 else Result := True;
 end;
