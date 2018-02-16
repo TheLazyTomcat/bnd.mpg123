@@ -7,20 +7,18 @@
 -------------------------------------------------------------------------------}
 {===============================================================================
 
-  mpg123 bindings
-
-  API version 44 (mpg123 1.25.8)
-
-  More info about mpg123 library: https://www.mpg123.de
+  mpg123 library bindings
 
     This unit is a direct translation of C header file mpg123.h into pascal,
-    it also includes stuff from header file fmt123.h. It is a translation of
-    libmpg123 binding intended for dynamic linking and loading of the mpg123
-    library (a DLL).
+    and is a main part of libmpg123 library binding.
 
-  ©František Milt 2018-02-13
+    More info about mpg123 library: https://www.mpg123.de
+
+  ©František Milt 2018-02-16
 
   Version 1.0
+
+  libmpg123 API version 44 (mpg123 1.25.8)
 
   Dependencies:
     AuxTypes - github.com/ncs-sniper/Lib.AuxTypes
@@ -31,6 +29,8 @@
     - enums were not translated to pascal enumerations, they were instead
       split into a type (an alias for int - 32bit integer) and a set of
       constants
+    - type identifier were suffixed with _t (some types needed it to prevent
+      name collisions, and to mantain consistency, it was applied to all types)
     - some constants were renamed because of symbol name collisions (added
       underscore at the start of the name)
     - some function parameters and structure fields were renamed (usually by
@@ -51,54 +51,14 @@
 ===============================================================================}
 unit mpg123;
 
-{$IF not(Defined(WINDOWS) or Defined(MSWINDOWS))}
-  {$MESSAGE FATAL 'Unsupported operating system.'}
-{$IFEND}
-
-{$IFDEF FPC}
-  {$MODE Delphi}
-{$ENDIF}
-
-{
-  LARGE_FILES_SUPPORT
-
-  When defined, type off_t is an alias for off64_t and default file handling
-  functions (those with no suffix) are calling _64 suffixed library functions
-  (e.g. mpg123_open calls lib:mpg123_open_64).
-  When not defined, off_t is declared as long and non-suffixed functions are
-  calling default library functions (e.g. mpg123_open calls lib:mpg123_open).
-
-  Defined by default.
-}
-{$DEFINE LARGE_FILES_SUPPORT}
+{$INCLUDE '.\mpg123_defs.inc'}
 
 interface
 
 uses
-  AuxTypes;
+  fmt123;
 
-(* some new types and constants for easier translation from C header *)
-const
-  SEEK_SET = 0;
-  SEEK_CUR = 1;
-  SEEK_END = 2;
-
-type
-  PPByte = ^PByte;
-
-  int     = Int32;      pint     = ^int;        ppint     = ^pint;
-  long    = Int32;      plong    = ^long;       pplong    = ^plong;
-  ulong   = UInt32;     pulong   = ^ulong;
-  size_t  = PtrUInt;    psize_t  = ^size_t;
-  ssize_t = PtrInt;
-  off32_t = Int32;      poff32_t = ^off32_t;    ppoff32_t = ^poff32_t;
-  off64_t = Int64;      poff64_t = ^off64_t;    ppoff64_t = ^poff64_t;
-{$IFDEF LARGE_FILES_SUPPORT}
-  off_t   = off64_t;
-{$ELSE}
-  off_t   = long;
-{$ENDIF}                poff_t   = ^off_t;      ppoff_t   = ^poff_t;
-
+// function name suffix for large files support  
 const
   LFS_DEF_SUFFIX = {$IFDEF LARGE_FILES_SUPPORT}'_64'{$ELSE}''{$ENDIF};
 
@@ -109,94 +69,6 @@ const
   free software under the terms of the LGPL 2.1
   see COPYING and AUTHORS files in distribution or http://mpg123.org
 *)
-
-(** \file fmt123.h Audio format definitions. *)
-
-(** \defgroup mpg123_enc mpg123 PCM sample encodings
- *  These are definitions for audio formats used by libmpg123 and
- *  libout123.
- *
- * @{
- *)
-
-(** An enum over all sample types possibly known to mpg123.
- *  The values are designed as bit flags to allow bitmasking for encoding
- *  families.
- *  This is also why the enum is not used as type for actual encoding variables,
- *  plain integers (at least 16 bit, 15 bit being used) cover the possible
- *  combinations of these flags.
- *
- *  Note that (your build of) libmpg123 does not necessarily support all these.
- *  Usually, you can expect the 8bit encodings and signed 16 bit.
- *  Also 32bit float will be usual beginning with mpg123-1.7.0 .
- *  What you should bear in mind is that (SSE, etc) optimized routines may be
- *  absent for some formats. We do have SSE for 16, 32 bit and float, though.
- *  24 bit integer is done via postprocessing of 32 bit output -- just cutting
- *  the last byte, no rounding, even. If you want better, do it yourself.
- *
- *  All formats are in native byte order. If you need different endinaness, you
- *  can simply postprocess the output buffers (libmpg123 wouldn't do anything
- * else). The macro MPG123_SAMPLESIZE() can be helpful there.
- *)
-type
-  mpg123_enc_enum_t = int;
-
-const
-  MPG123_ENC_8           = $00f;                                                (* 0000 0000 0000 1111 Some 8 bit  integer encoding. *)
-  MPG123_ENC_16          = $040;                                                (* 0000 0000 0100 0000 Some 16 bit integer encoding. *)
-  MPG123_ENC_24          = $4000;                                               (* 0100 0000 0000 0000 Some 24 bit integer encoding. *)
-  MPG123_ENC_32          = $100;                                                (* 0000 0001 0000 0000 Some 32 bit integer encoding. *)
-  MPG123_ENC_SIGNED      = $080;                                                (* 0000 0000 1000 0000 Some signed integer encoding. *)
-  MPG123_ENC_FLOAT       = $e00;                                                (* 0000 1110 0000 0000 Some float encoding. *)
-  MPG123_ENC_SIGNED_16   = (MPG123_ENC_16 or MPG123_ENC_SIGNED or $10);         (* 0000 0000 1101 0000 signed 16 bit *)
-  MPG123_ENC_UNSIGNED_16 = (MPG123_ENC_16 or $20);                              (* 0000 0000 0110 0000 unsigned 16 bit *)
-  MPG123_ENC_UNSIGNED_8  = $01;                                                 (* 0000 0000 0000 0001 unsigned 8 bit *)
-  MPG123_ENC_SIGNED_8    = (MPG123_ENC_SIGNED or $02);                          (* 0000 0000 1000 0010 signed 8 bit *)
-  MPG123_ENC_ULAW_8      = $04;                                                 (* 0000 0000 0000 0100 ulaw 8 bit *)
-  MPG123_ENC_ALAW_8      = $08;                                                 (* 0000 0000 0000 1000 alaw 8 bit *)
-  MPG123_ENC_SIGNED_32   = (MPG123_ENC_32 or MPG123_ENC_SIGNED or $1000);       (* 0001 0001 1000 0000 signed 32 bit *)
-  MPG123_ENC_UNSIGNED_32 = (MPG123_ENC_32 or $2000);                            (* 0010 0001 0000 0000 unsigned 32 bit *)
-  MPG123_ENC_SIGNED_24   = (MPG123_ENC_24 or MPG123_ENC_SIGNED or $1000);       (* 0101 0000 1000 0000 signed 24 bit *)
-  MPG123_ENC_UNSIGNED_24 = (MPG123_ENC_24 or $2000);                            (* 0110 0000 0000 0000 unsigned 24 bit *)
-  MPG123_ENC_FLOAT_32    = $200;                                                (* 0000 0010 0000 0000 32bit float *)
-  MPG123_ENC_FLOAT_64    = $400;                                                (* 0000 0100 0000 0000 64bit float *)    
-  MPG123_ENC_ANY         = (MPG123_ENC_SIGNED_16  or MPG123_ENC_UNSIGNED_16 or  (* Any possibly known encoding from the list above. *)
-                            MPG123_ENC_UNSIGNED_8 or MPG123_ENC_SIGNED_8 or
-                            MPG123_ENC_ULAW_8     or MPG123_ENC_ALAW_8 or
-                            MPG123_ENC_SIGNED_32  or MPG123_ENC_UNSIGNED_32 or
-                            MPG123_ENC_SIGNED_24  or MPG123_ENC_UNSIGNED_24 or
-                            MPG123_ENC_FLOAT_32   or MPG123_ENC_FLOAT_64);
-
-(** Get size of one PCM sample with given encoding.
- *  This is included both in libmpg123 and libout123. Both offer
- *  an API function to provide the macro results from library
- *  compile-time, not that of you application. This most likely
- *  does not matter as I do not expect any fresh PCM sample
- *  encoding to appear. But who knows? Perhaps the encoding type
- *  will be abused for funny things in future, not even plain PCM.
- *  And, by the way: Thomas really likes the ?: operator.
- * \param enc the encoding (mpg123_enc_enum value)
- * \return size of one sample in bytes
- *)
-Function MPG123_SAMPLESIZE(enc: mpg123_enc_enum_t): Integer;
-
-(** Structure defining an audio format.
- *  Providing the members as individual function arguments to define a certain
- *  output format is easy enough. This struct makes is more comfortable to deal
- *  with a list of formats.
- *  Negative values for the members might be used to communicate use of default
- *  values.
- *)
-type
-  mpg123_fmt_t = record
-    rate:     long;   (**< sampling rate in Hz  *)
-    channels: int;    (**< channel count *)
-    encoding: int;    (** encoding code, can be single value or bitwise or of members of
-                       *  mpg123_enc_enum *)
-  end;
-  mpg123_fmt_p = ^mpg123_fmt_t;
-
-(* @} *)
 
 (** \file mpg123.h The header file for the libmpg123 MPEG Audio decoder *)
 
@@ -1476,6 +1348,9 @@ var
  *  \param icy_text The input data in ICY encoding
  *  \return pointer to newly allocated buffer with UTF-8 data (You free() it!) *)
   mpg123_icy2utf8: Function(icy_text: PAnsiChar): PAnsiChar; cdecl;
+{$IFDEF LEAK_WARNINGS}
+  {$MESSAGE WARN 'Function mpg123_icy2utf8 is allocating buffer that cannot be freed. Use it with caution!'}
+{$ENDIF}
 
 (* @} *)
 
@@ -1659,7 +1534,7 @@ var
 //==============================================================================
 
 const
-  mpg123_LibFileName = 'libmpg123-0.dll';
+  mpg123_LibFileName = 'mpg123.dll';
 
 Function mpg123_Initialize(const LibPath: String = mpg123_LibFileName): Boolean;
 procedure mpg123_Finalize;
@@ -1668,26 +1543,6 @@ implementation
 
 uses
   Windows, SysUtils, StrRect;
-
-//== Macro implementation ======================================================
-
-Function MPG123_SAMPLESIZE(enc: mpg123_enc_enum_t): Integer;
-begin
-If (enc and MPG123_ENC_8) <> 0 then
-  Result := 1
-else If (enc and MPG123_ENC_16) <> 0 then
-  Result := 2
-else If (enc and MPG123_ENC_24) <> 0 then
-  Result := 3
-else If ((enc and MPG123_ENC_32) <> 0) or (enc = MPG123_ENC_FLOAT_32) then
-  Result := 4
-else If enc = MPG123_ENC_FLOAT_64 then
-  Result := 8
-else
-  Result := 0;
-end;
-
-//==============================================================================
 
 var
   mpg123_LibHandle: THandle = 0;
