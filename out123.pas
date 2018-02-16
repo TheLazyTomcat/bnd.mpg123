@@ -306,7 +306,7 @@ var
 var
   out123_getparam: Function(ao: out123_handle_p; code: out123_parms_t; ret_value: plong; ret_fvalue: PDouble; ret_svalue: PPAnsiChar): int; cdecl;
 
-  Function out123_getparam_int(ao: out123_handle_p; code: out123_parms_t; ret_value: Plong): int;
+  Function out123_getparam_int(ao: out123_handle_p; code: out123_parms_t; ret_value: plong): int;
   Function out123_getparam_float(ao: out123_handle_p; code: out123_parms_t; ret_value: PDouble): int;
   Function out123_getparam_string(ao: out123_handle_p; code: out123_parms_t; ret_value: PPAnsiChar): int;
 
@@ -597,7 +597,7 @@ uses
 
 //== Macro implementation ======================================================
 
-Function out123_param_int(ao: out123_handle_p; code: out123_parms_t; value: long): int;
+Function out123_param_int(ao: out123_handle_p; code: out123_parms_t; value: fmt123.long): int;
 begin
 Result := out123_param(ao,code,value,0.0,nil);
 end;
@@ -618,7 +618,7 @@ end;
 
 //------------------------------------------------------------------------------
 
-Function out123_getparam_int(ao: out123_handle_p; code: out123_parms_t; ret_value: Plong): int;
+Function out123_getparam_int(ao: out123_handle_p; code: out123_parms_t; ret_value: fmt123.plong): int;
 begin
 Result := out123_getparam(ao,code,ret_value,nil,nil);
 end;
