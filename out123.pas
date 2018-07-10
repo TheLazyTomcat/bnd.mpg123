@@ -14,11 +14,11 @@
 
     More info about mpg123 library: https://www.mpg123.de
 
-  ©František Milt 2018-02-16
+  ©František Milt 2018-07-10
 
-  Version 1.0
+  Version 1.0.1
 
-  libout123 API version 2 (mpg123 1.25.8)
+  libout123 API version 2 (mpg123 1.25.10)
 
   Dependencies:
     AuxTypes - github.com/ncs-sniper/Lib.AuxTypes

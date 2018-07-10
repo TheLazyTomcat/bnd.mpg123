@@ -1,3 +1,15 @@
+1.25.10
+-------
+
+- libout123: Fix error messages beginning from OUT123_ARG_ERROR (bug 261).
+
+1.25.9
+------
+- mpg123: Fix --icy-interval handling to work with stream from stdin.
+  (curl | mpg123 --icy-interval=n -)
+- libmpg123: Fix another invalid read and segfault on damaged (fuzzed)
+  files with part2_3_length == 0 (set maxband=1, pulled from upcoming 1.26.0).
+
 1.25.8
 ------
 - mpg123:

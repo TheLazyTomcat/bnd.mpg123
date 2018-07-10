@@ -14,11 +14,11 @@
 
     More info about mpg123 library: https://www.mpg123.de
 
-  ©František Milt 2018-02-16
+  ©František Milt 2018-07-10
 
-  Version 1.0
+  Version 1.0.1
 
-  libmpg123 API version 44 (mpg123 1.25.8)
+  libmpg123 API version 44 (mpg123 1.25.10)
 
   Dependencies:
     AuxTypes - github.com/ncs-sniper/Lib.AuxTypes
@@ -63,7 +63,7 @@ const
   LFS_DEF_SUFFIX = {$IFDEF LARGE_FILES_SUPPORT}'_64'{$ELSE}''{$ENDIF};
 
 (*
-  libmpg123: MPEG Audio Decoder library (version 1.25.8)
+  libmpg123: MPEG Audio Decoder library (version 1.25.10)
 
   copyright 1995-2015 by the mpg123 project
   free software under the terms of the LGPL 2.1
@@ -80,25 +80,25 @@ const
   MPG123_API_VERSION = 44;
 
 (* Simplified large file handling.
-	I used to have a check here that prevents building for a library with conflicting large file setup
-	(application that uses 32 bit offsets with library that uses 64 bits).
-	While that was perfectly fine in an environment where there is one incarnation of the library,
-	it hurt GNU/Linux and Solaris systems with multilib where the distribution fails to provide the
-	correct header matching the 32 bit library (where large files need explicit support) or
-	the 64 bit library (where there is no distinction).
+  I used to have a check here that prevents building for a library with conflicting large file setup
+  (application that uses 32 bit offsets with library that uses 64 bits).
+  While that was perfectly fine in an environment where there is one incarnation of the library,
+  it hurt GNU/Linux and Solaris systems with multilib where the distribution fails to provide the
+  correct header matching the 32 bit library (where large files need explicit support) or
+  the 64 bit library (where there is no distinction).
 
-	New approach: When the app defines _FILE_OFFSET_BITS, it wants non-default large file support,
-	and thus functions with added suffix (mpg123_open_64).
-	Any mismatch will be caught at link time because of the _FILE_OFFSET_BITS setting used when
-	building libmpg123. Plus, there's dual mode large file support in mpg123 since 1.12 now.
-	Link failure is not the expected outcome of any half-sane usage anymore.
+  New approach: When the app defines _FILE_OFFSET_BITS, it wants non-default large file support,
+  and thus functions with added suffix (mpg123_open_64).
+  Any mismatch will be caught at link time because of the _FILE_OFFSET_BITS setting used when
+  building libmpg123. Plus, there's dual mode large file support in mpg123 since 1.12 now.
+  Link failure is not the expected outcome of any half-sane usage anymore.
 
-	More complication: What about client code defining _LARGEFILE64_SOURCE? It might want direct access to the _64 functions, along with the ones without suffix. Well, that's possible now via defining MPG123_NO_LARGENAME and MPG123_LARGESUFFIX, respectively, for disabling or enforcing the suffix names.
+  More complication: What about client code defining _LARGEFILE64_SOURCE? It might want direct access to the _64 functions, along with the ones without suffix. Well, that's possible now via defining MPG123_NO_LARGENAME and MPG123_LARGESUFFIX, respectively, for disabling or enforcing the suffix names.
 *)
 
 (*
-	Now, the renaming of large file aware functions.
-	By default, it appends underscore _FILE_OFFSET_BITS (so, mpg123_seek_64 for mpg123_seek), if _FILE_OFFSET_BITS is defined. You can force a different suffix via MPG123_LARGESUFFIX (that must include the underscore), or you can just disable the whole mess by defining MPG123_NO_LARGENAME.
+  Now, the renaming of large file aware functions.
+  By default, it appends underscore _FILE_OFFSET_BITS (so, mpg123_seek_64 for mpg123_seek), if _FILE_OFFSET_BITS is defined. You can force a different suffix via MPG123_LARGESUFFIX (that must include the underscore), or you can just disable the whole mess by defining MPG123_NO_LARGENAME.
 *)
 (*
 ********************************************************************************

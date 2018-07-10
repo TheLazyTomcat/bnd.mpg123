@@ -14,9 +14,9 @@
 
     More info about mpg123 library: https://www.mpg123.de
 
-  ©František Milt 2018-02-16
+  ©František Milt 2018-07-10
 
-  Version 1.0
+  Version 1.0.1
 
   Dependencies:
     AuxTypes - github.com/ncs-sniper/Lib.AuxTypes
