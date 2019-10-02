@@ -12,31 +12,40 @@
     This unit is a direct translation of C header file fmt123.h, which is part
     of bindings for libmpg123 and libout123 libraries, into pascal.
 
-    More info about mpg123 library: https://www.mpg123.de
+    More info about the mpg123 library can be found at: https://www.mpg123.de
 
-  ©František Milt 2018-07-10
+  Version 1.0.1 (2018-07-10)
 
-  Version 1.0.1
+  Build against library version 1.25.10
+
+  Last change 2019-10-02
+
+  ©2018-2019 František Milt
 
   Contacts:
     František Milt: frantisek.milt@gmail.com
 
   Support:
-    If you find this code useful, please consider supporting the author by
-    making a small donation using following link(s):
+    If you find this code useful, please consider supporting its author(s) by
+    making a small donation using the following link(s):
 
       https://www.paypal.me/FMilt
 
+  Changelog:
+    For detailed changelog and history please refer to this git repository:
+
+      github.com/TheLazyTomcat/Bnd.mpg123
+
   Dependencies:
-    AuxTypes - github.com/ncs-sniper/Lib.AuxTypes
-    StrRect  - github.com/ncs-sniper/Lib.StrRect
+    AuxTypes - github.com/TheLazyTomcat/Lib.AuxTypes
+    StrRect  - github.com/TheLazyTomcat/Lib.StrRect
 
   Translation notes:
-    - macros were expanded in-place or changed to normal functions
+    - macros were expanded in-place or implemented as normal functions
     - enums were not translated to pascal enumerations, they were instead
-      split into a type (an alias for int - 32bit integer) and a set of
+      split into a type (an alias for int - a 32bit integer) and a set of
       constants
-    - type identifier were suffixed with _t (some types needed it to prevent
+    - type identifiers were suffixed with _t (some types needed it to prevent
       name collisions, and to mantain consistency, it was applied to all types)
     - some constants were renamed because of symbol name collisions (added
       underscore at the start of the name)
@@ -51,7 +60,7 @@
       functions
     - mpg123_Initialize automatically calls library function mpg123_init and
       mpg123_Finalize calls mpg123_exit, so there is no need to call them
-      explicitly      
+      explicitly
     - all comments are directly copied from the header files, no change was made
     - current translation is for Windows OS only
 
@@ -63,6 +72,7 @@ unit fmt123;
 interface
 
 uses
+  SysUtils,
   AuxTypes;
 
 (* some new types and constants for easier translation from C header *)
@@ -87,6 +97,12 @@ type
 {$ELSE}
   off_t   = long;
 {$ENDIF}                poff_t   = ^off_t;      ppoff_t   = ^poff_t;
+
+type
+  // binding-specific exception
+  EMPG123Exception = class(Exception);
+
+//==============================================================================
 
 (*
   libmpg123: MPEG Audio Decoder library
