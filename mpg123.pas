@@ -18,7 +18,7 @@
 
   Build against library version 1.25.10 (mpg123 API version 44)
 
-  Last change 2019-10-02
+  Last change 2019-10-14
 
   ©2018-2019 František Milt
 
@@ -1272,7 +1272,7 @@ const
  *  here to separate from MPEG frames). *)
 type
   mpg123_picture_t = record
-    _type:        AnsiChar;         (**< mpg123_id3_pic_type value *)
+    _type:        Byte;             (**< mpg123_id3_pic_type value *)
     description:  mpg123_string_t;  (**< description string *)
     mime_type:    mpg123_string_t;  (**< MIME type *)
     size:         size_t;           (**< size in bytes *)
