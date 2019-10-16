@@ -16,9 +16,9 @@
 
   Version 1.0.1 (2018-07-10)
 
-  Build against library version 1.25.10 (libout123 API version 2)
+  Build against library version 1.25.12 (libout123 API version 2)
 
-  Last change 2019-10-02
+  Last change 2019-10-16
 
   ©2018-2019 František Milt
 

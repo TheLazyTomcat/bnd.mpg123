@@ -16,9 +16,9 @@
 
   Version 1.0.1 (2018-07-10)
 
-  Build against library version 1.25.10 (mpg123 API version 44)
+  Build against library version 1.25.12 (mpg123 API version 44)
 
-  Last change 2019-10-14
+  Last change 2019-10-16
 
   ©2018-2019 František Milt
 
@@ -75,7 +75,7 @@ uses
   fmt123;
 
 (*
-  libmpg123: MPEG Audio Decoder library (version 1.25.10)
+  libmpg123: MPEG Audio Decoder library (version 1.25.12)
 
   copyright 1995-2015 by the mpg123 project
   free software under the terms of the LGPL 2.1
