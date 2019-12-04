@@ -14,11 +14,11 @@
 
     More info about the mpg123 library can be found at: https://www.mpg123.de
 
-  Version 1.0.1 (2018-07-10)
+  Version 1.0.2 (2019-11-04)
 
   Build against library version 1.25.12 (mpg123 API version 44)
 
-  Last change 2019-10-16
+  Last change 2019-11-04
 
   ©2018-2019 František Milt
 
@@ -58,9 +58,6 @@
       defined), meaning type off_t is an alias for off64_t and default functions
       (without _32 or _64 suffix) are silently calling 64bit-aware external
       functions
-    - mpg123_Initialize automatically calls library function mpg123_init and
-      mpg123_Finalize calls mpg123_exit, so there is no need to call them
-      explicitly
     - all comments are directly copied from the header files, no change was made
     - current translation is for Windows OS only
 
@@ -1548,8 +1545,8 @@ var
 const
   mpg123_LibFileName = 'mpg123.dll';
 
-Function mpg123_Initialize(const LibPath: String = mpg123_LibFileName): Boolean;
-procedure mpg123_Finalize;
+Function mpg123_Initialize(const LibPath: String = mpg123_LibFileName; InitLib: Boolean = True): Boolean;
+procedure mpg123_Finalize(FinalLib: Boolean = True);
 
 implementation
 
@@ -1562,7 +1559,7 @@ var
 
 //------------------------------------------------------------------------------
 
-Function mpg123_Initialize(const LibPath: String = mpg123_LibFileName): Boolean;
+Function mpg123_Initialize(const LibPath: String = mpg123_LibFileName; InitLib: Boolean = True): Boolean;
 const
   // function name suffix for large files support  
   LFS_DEF_SUFFIX = {$IFDEF LARGE_FILES_SUPPORT}'_64'{$ELSE}''{$ENDIF};  
@@ -1731,7 +1728,10 @@ If mpg123_LibHandle = 0 then
         mpg123_replace_reader_handle_32 := GetAndCheckProc('mpg123_replace_reader_handle_32');
         mpg123_replace_reader_handle_64 := GetAndCheckProc('mpg123_replace_reader_handle_64');
         // internal init and result
-        Result := mpg123_init = MPG123_OK;
+        If InitLib then
+          Result := mpg123_init = MPG123_OK
+        else
+          Result := True;
       end
     else Result := False;
   end
@@ -1740,11 +1740,12 @@ end;
 
 //------------------------------------------------------------------------------
 
-procedure mpg123_Finalize;
+procedure mpg123_Finalize(FinalLib: Boolean = True);
 begin
 If mpg123_LibHandle <> 0 then
   begin
-    mpg123_exit;
+    If FinalLib then
+      mpg123_exit;
     FreeLibrary(mpg123_LibHandle);
     mpg123_LibHandle := 0;
   end;

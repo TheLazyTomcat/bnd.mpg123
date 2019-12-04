@@ -14,11 +14,11 @@
 
     More info about the mpg123 library can be found at: https://www.mpg123.de
 
-  Version 1.0.1 (2018-07-10)
+  Version 1.0.2 (2019-11-04)
 
   Build against library version 1.25.12
 
-  Last change 2019-10-16
+  Last change 2019-11-04
 
   ©2018-2019 František Milt
 
@@ -58,9 +58,6 @@
       defined), meaning type off_t is an alias for off64_t and default functions
       (without _32 or _64 suffix) are silently calling 64bit-aware external
       functions
-    - mpg123_Initialize automatically calls library function mpg123_init and
-      mpg123_Finalize calls mpg123_exit, so there is no need to call them
-      explicitly
     - all comments are directly copied from the header files, no change was made
     - current translation is for Windows OS only
 
