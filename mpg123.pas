@@ -1552,7 +1552,7 @@ implementation
 
 uses
   Windows, SysUtils,
-  StrRect;
+  StrRect, CompatXP;
 
 var
   mpg123_LibHandle: THandle = 0;
@@ -1572,6 +1572,7 @@ const
   end;
 
 begin
+InstallHook;
 If mpg123_LibHandle = 0 then
   begin
     mpg123_LibHandle := LoadLibraryEx(PChar(StrToWin(LibPath)),0,0);

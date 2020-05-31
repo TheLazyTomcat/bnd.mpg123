@@ -607,7 +607,7 @@ implementation
 
 uses
   Windows, SysUtils,
-  StrRect;
+  StrRect, CompatXP;
 
 //== Macro implementation ======================================================
 
@@ -656,7 +656,7 @@ end;
 var
   out123_LibHandle: THandle = 0;
 
-//------------------------------------------------------------------------------  
+//------------------------------------------------------------------------------
 
 Function out123_Initialize(const LibPath: String = out123_LibFileName): Boolean;
 
@@ -668,6 +668,7 @@ Function out123_Initialize(const LibPath: String = out123_LibFileName): Boolean;
   end;
 
 begin
+InstallHook;
 If out123_LibHandle = 0 then
   begin
     out123_LibHandle := LoadLibraryEx(PChar(StrToWin(LibPath)),0,0);
