@@ -14,11 +14,11 @@
 
     More info about the mpg123 library can be found at: https://www.mpg123.de
 
-  Version 1.0.2 (2019-11-04)
+  Version 1.0.3 (2019-11-04)
 
-  Build against library version 1.25.12 (libout123 API version 2)
+  Build against library version 1.25.13 (libout123 API version 2)
 
-  Last change 2019-11-04
+  Last change 2020-05-31
 
   ©2018-2019 František Milt
 

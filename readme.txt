@@ -1,3 +1,8 @@
+Since version 1.26.0, mpg123 no longer supports Windows XP. And because this
+binding was primarily created for use on this system, 1.25.13 will be the last
+version supported. I will no longer maintain and develop this code, unless 
+a compatibility with WinXP is resolved (not probable). 
+
 --- mpg123 bindings ---
 
 This is a direct translation of bindings to libmpg123 and libout123 libraries
@@ -20,4 +25,4 @@ appropriate subdirectory for readme and licensing details.
 
 --- authors, contacts, copyright ---
 
-©2018 František Milt, all rights reserved - frantisek.milt@gmail.com
+©2020 František Milt, all rights reserved - frantisek.milt@gmail.com
