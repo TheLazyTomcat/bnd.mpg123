@@ -18,9 +18,9 @@
 
   Build against library version 1.25.13
 
-  Last change 2020-05-31
+  Last change 2020-08-02
 
-  ©2018-2019 František Milt
+  ©2018-2020 František Milt
 
   Contacts:
     František Milt: frantisek.milt@gmail.com

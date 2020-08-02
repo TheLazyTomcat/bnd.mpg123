@@ -5,6 +5,7 @@
 {$IFDEF FPC}
   {$MODE Delphi}
 {$ENDIF}
+{$H+}
 
 {
   LARGE_FILES_SUPPORT
