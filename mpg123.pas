@@ -14,11 +14,11 @@
 
     More info about the mpg123 library can be found at: https://www.mpg123.de
 
-  Version 1.0.3 (2019-11-04)
+  Version 1.0.4 (2020-08-11)
 
   Build against library version 1.25.13 (mpg123 API version 44)
 
-  Last change 2020-08-02
+  Last change 2020-08-11
 
   ©2018-2020 František Milt
 
@@ -37,8 +37,9 @@
       github.com/TheLazyTomcat/Bnd.mpg123
 
   Dependencies:
-    AuxTypes - github.com/TheLazyTomcat/Lib.AuxTypes
-    StrRect  - github.com/TheLazyTomcat/Lib.StrRect
+    AuxTypes    - github.com/TheLazyTomcat/Lib.AuxTypes
+    StrRect     - github.com/TheLazyTomcat/Lib.StrRect
+    DynLibUtils - github.com/TheLazyTomcat/Lib.DynLibUtils
 
   Translation notes:
     - macros were expanded in-place or implemented as normal functions
@@ -1551,11 +1552,10 @@ procedure mpg123_Finalize(FinalLib: Boolean = True);
 implementation
 
 uses
-  Windows, SysUtils,
-  StrRect;
+  DynLibUtils;
 
 var
-  mpg123_LibHandle: THandle = 0;
+  Libcontext: TDLULibraryContext;
 
 //------------------------------------------------------------------------------
 
@@ -1563,192 +1563,175 @@ Function mpg123_Initialize(const LibPath: String = mpg123_LibFileName; InitLib: 
 const
   // function name suffix for large files support  
   LFS_DEF_SUFFIX = {$IFDEF LARGE_FILES_SUPPORT}'_64'{$ELSE}''{$ENDIF};  
-
-  Function GetAndCheckProc(const ProcName: String): Pointer;
-  begin
-    Result := GetProcAddress(mpg123_LibHandle,PChar(StrToWin(ProcName)));
-    If not Assigned(Result) then
-      raise EMPG123Exception.CreateFmt('mpg123_Initialize:GetAndCheckProc: Address of function "%s" could not be obtained.',[ProcName]);
-  end;
-
 begin
-If mpg123_LibHandle = 0 then
-  begin
-    mpg123_LibHandle := LoadLibraryEx(PChar(StrToWin(LibPath)),0,0);
-    If mpg123_LibHandle <> 0 then
-      begin
-        // mpg123 library and handle setup - - - - - - - - - - - - - - - - - - -
-        mpg123_init                     := GetAndCheckProc('mpg123_init');
-        mpg123_exit                     := GetAndCheckProc('mpg123_exit');
-        mpg123_new                      := GetAndCheckProc('mpg123_new');
-        mpg123_delete                   := GetAndCheckProc('mpg123_delete');
-        // mpg123 params and features  - - - - - - - - - - - - - - - - - - - - -
-        mpg123_param                    := GetAndCheckProc('mpg123_param');
-        mpg123_getparam                 := GetAndCheckProc('mpg123_getparam');
-        mpg123_feature                  := GetAndCheckProc('mpg123_feature');
-        // mpg123 error handling - - - - - - - - - - - - - - - - - - - - - - - -
-        mpg123_plain_strerror           := GetAndCheckProc('mpg123_plain_strerror');
-        mpg123_strerror                 := GetAndCheckProc('mpg123_strerror');
-        mpg123_errcode                  := GetAndCheckProc('mpg123_errcode');
-        // mpg123 decoder selection  - - - - - - - - - - - - - - - - - - - - - -
-        mpg123_decoders                 := GetAndCheckProc('mpg123_decoders');
-        mpg123_supported_decoders       := GetAndCheckProc('mpg123_supported_decoders');
-        mpg123_decoder                  := GetAndCheckProc('mpg123_decoder');
-        mpg123_current_decoder          := GetAndCheckProc('mpg123_current_decoder');
-        // mpg123 output audio format  - - - - - - - - - - - - - - - - - - - - -
-        mpg123_rates                    := GetAndCheckProc('mpg123_rates');
-        mpg123_encodings                := GetAndCheckProc('mpg123_encodings');
-        mpg123_encsize                  := GetAndCheckProc('mpg123_encsize');
-        mpg123_format_none              := GetAndCheckProc('mpg123_format_none');
-        mpg123_format_all               := GetAndCheckProc('mpg123_format_all');
-        mpg123_format                   := GetAndCheckProc('mpg123_format');
-        mpg123_format_support           := GetAndCheckProc('mpg123_format_support');
-        mpg123_getformat                := GetAndCheckProc('mpg123_getformat');
-        mpg123_getformat2               := GetAndCheckProc('mpg123_getformat2');
-        // mpg123 file input and decoding  - - - - - - - - - - - - - - - - - - -
-        mpg123_open                     := GetAndCheckProc('mpg123_open' + LFS_DEF_SUFFIX);
-        mpg123_open_32                  := GetAndCheckProc('mpg123_open_32');
-        mpg123_open_64                  := GetAndCheckProc('mpg123_open_64');
-        mpg123_open_fd                  := GetAndCheckProc('mpg123_open_fd' + LFS_DEF_SUFFIX);
-        mpg123_open_fd_32               := GetAndCheckProc('mpg123_open_fd_32');
-        mpg123_open_fd_64               := GetAndCheckProc('mpg123_open_fd_64');
-        mpg123_open_handle              := GetAndCheckProc('mpg123_open_handle' + LFS_DEF_SUFFIX);
-        mpg123_open_handle_32           := GetAndCheckProc('mpg123_open_handle_32');
-        mpg123_open_handle_64           := GetAndCheckProc('mpg123_open_handle_64');
-        mpg123_open_feed                := GetAndCheckProc('mpg123_open_feed');
-        mpg123_close                    := GetAndCheckProc('mpg123_close');
-        mpg123_read                     := GetAndCheckProc('mpg123_read');
-        mpg123_feed                     := GetAndCheckProc('mpg123_feed');
-        mpg123_decode                   := GetAndCheckProc('mpg123_decode');
-        mpg123_decode_frame             := GetAndCheckProc('mpg123_decode_frame' + LFS_DEF_SUFFIX);
-        mpg123_decode_frame_32          := GetAndCheckProc('mpg123_decode_frame_32');
-        mpg123_decode_frame_64          := GetAndCheckProc('mpg123_decode_frame_64');
-        mpg123_framebyframe_decode      := GetAndCheckProc('mpg123_framebyframe_decode' + LFS_DEF_SUFFIX);
-        mpg123_framebyframe_decode_32   := GetAndCheckProc('mpg123_framebyframe_decode_32');
-        mpg123_framebyframe_decode_64   := GetAndCheckProc('mpg123_framebyframe_decode_64');
-        mpg123_framebyframe_next        := GetAndCheckProc('mpg123_framebyframe_next');
-        mpg123_framedata                := GetAndCheckProc('mpg123_framedata');
-        mpg123_framepos                 := GetAndCheckProc('mpg123_framepos' + LFS_DEF_SUFFIX);
-        mpg123_framepos_32              := GetAndCheckProc('mpg123_framepos_32');
-        mpg123_framepos_64              := GetAndCheckProc('mpg123_framepos_64');
-        // mpg123 position and seeking - - - - - - - - - - - - - - - - - - - - -
-        mpg123_tell                     := GetAndCheckProc('mpg123_tell' + LFS_DEF_SUFFIX);
-        mpg123_tell_32                  := GetAndCheckProc('mpg123_tell_32');
-        mpg123_tell_64                  := GetAndCheckProc('mpg123_tell_64');
-        mpg123_tellframe                := GetAndCheckProc('mpg123_tellframe' + LFS_DEF_SUFFIX);
-        mpg123_tellframe_32             := GetAndCheckProc('mpg123_tellframe_32');
-        mpg123_tellframe_64             := GetAndCheckProc('mpg123_tellframe_64');
-        mpg123_tell_stream              := GetAndCheckProc('mpg123_tell_stream' + LFS_DEF_SUFFIX);
-        mpg123_tell_stream_32           := GetAndCheckProc('mpg123_tell_stream_32');
-        mpg123_tell_stream_64           := GetAndCheckProc('mpg123_tell_stream_64');
-        mpg123_seek                     := GetAndCheckProc('mpg123_seek' + LFS_DEF_SUFFIX);
-        mpg123_seek_32                  := GetAndCheckProc('mpg123_seek_32');
-        mpg123_seek_64                  := GetAndCheckProc('mpg123_seek_64');
-        mpg123_feedseek                 := GetAndCheckProc('mpg123_feedseek' + LFS_DEF_SUFFIX);
-        mpg123_feedseek_32              := GetAndCheckProc('mpg123_feedseek_32');
-        mpg123_feedseek_64              := GetAndCheckProc('mpg123_feedseek_64');
-        mpg123_seek_frame               := GetAndCheckProc('mpg123_seek_frame' + LFS_DEF_SUFFIX);
-        mpg123_seek_frame_32            := GetAndCheckProc('mpg123_seek_frame_32');
-        mpg123_seek_frame_64            := GetAndCheckProc('mpg123_seek_frame_64');
-        mpg123_timeframe                := GetAndCheckProc('mpg123_timeframe' + LFS_DEF_SUFFIX);
-        mpg123_timeframe_32             := GetAndCheckProc('mpg123_timeframe_32');
-        mpg123_timeframe_64             := GetAndCheckProc('mpg123_timeframe_64');
-        mpg123_index                    := GetAndCheckProc('mpg123_index' + LFS_DEF_SUFFIX);
-        mpg123_index_32                 := GetAndCheckProc('mpg123_index_32');
-        mpg123_index_64                 := GetAndCheckProc('mpg123_index_64');
-        mpg123_set_index                := GetAndCheckProc('mpg123_set_index' + LFS_DEF_SUFFIX);
-        mpg123_set_index_32             := GetAndCheckProc('mpg123_set_index_32');
-        mpg123_set_index_64             := GetAndCheckProc('mpg123_set_index_64');
-        mpg123_position                 := GetAndCheckProc('mpg123_position' + LFS_DEF_SUFFIX);
-        mpg123_position_32              := GetAndCheckProc('mpg123_position_32');
-        mpg123_position_64              := GetAndCheckProc('mpg123_position_64');
-        // mpg123 volume and equalizer - - - - - - - - - - - - - - - - - - - - -
-        mpg123_eq                       := GetAndCheckProc('mpg123_eq');
-        mpg123_geteq                    := GetAndCheckProc('mpg123_geteq');
-        mpg123_reset_eq                 := GetAndCheckProc('mpg123_reset_eq');
-        mpg123_volume                   := GetAndCheckProc('mpg123_volume');
-        mpg123_volume_change            := GetAndCheckProc('mpg123_volume_change');
-        mpg123_getvolume                := GetAndCheckProc('mpg123_getvolume');
-        // mpg123 status and information - - - - - - - - - - - - - - - - - - - -
-        mpg123_info                     := GetAndCheckProc('mpg123_info');
-        mpg123_safe_buffer              := GetAndCheckProc('mpg123_safe_buffer');
-        mpg123_scan                     := GetAndCheckProc('mpg123_scan');
-        mpg123_framelength              := GetAndCheckProc('mpg123_framelength' + LFS_DEF_SUFFIX);
-        mpg123_framelength_32           := GetAndCheckProc('mpg123_framelength_32');
-        mpg123_framelength_64           := GetAndCheckProc('mpg123_framelength_64');
-        mpg123_length                   := GetAndCheckProc('mpg123_length' + LFS_DEF_SUFFIX);
-        mpg123_length_32                := GetAndCheckProc('mpg123_length_32');
-        mpg123_length_64                := GetAndCheckProc('mpg123_length_64');
-        mpg123_set_filesize             := GetAndCheckProc('mpg123_set_filesize' + LFS_DEF_SUFFIX);
-        mpg123_set_filesize_32          := GetAndCheckProc('mpg123_set_filesize_32');
-        mpg123_set_filesize_64          := GetAndCheckProc('mpg123_set_filesize_64');
-        mpg123_tpf                      := GetAndCheckProc('mpg123_tpf');
-        mpg123_spf                      := GetAndCheckProc('mpg123_spf');
-        mpg123_clip                     := GetAndCheckProc('mpg123_clip');
-        // mpg123 decoder/stream state information - - - - - - - - - - - - - - -
-        mpg123_getstate                 := GetAndCheckProc('mpg123_getstate');
-        // mpg123 string handling functions  - - - - - - - - - - - - - - - - - -
-        mpg123_init_string              := GetAndCheckProc('mpg123_init_string');
-        mpg123_free_string              := GetAndCheckProc('mpg123_free_string');
-        mpg123_resize_string            := GetAndCheckProc('mpg123_resize_string');
-        mpg123_grow_string              := GetAndCheckProc('mpg123_grow_string');
-        mpg123_copy_string              := GetAndCheckProc('mpg123_copy_string');
-        mpg123_add_string               := GetAndCheckProc('mpg123_add_string');
-        mpg123_add_substring            := GetAndCheckProc('mpg123_add_substring');
-        mpg123_set_string               := GetAndCheckProc('mpg123_set_string');
-        mpg123_set_substring            := GetAndCheckProc('mpg123_set_substring');
-        mpg123_strlen                   := GetAndCheckProc('mpg123_strlen');
-        mpg123_chomp_string             := GetAndCheckProc('mpg123_chomp_string');
-        // mpg123 text encodings - - - - - - - - - - - - - - - - - - - - - - - -
-        mpg123_enc_from_id3             := GetAndCheckProc('mpg123_enc_from_id3');
-        mpg123_store_utf8               := GetAndCheckProc('mpg123_store_utf8');
-        // mpg123 metadata handling  - - - - - - - - - - - - - - - - - - - - - -
-        mpg123_meta_check               := GetAndCheckProc('mpg123_meta_check');
-        mpg123_meta_free                := GetAndCheckProc('mpg123_meta_free');
-        mpg123_id3                      := GetAndCheckProc('mpg123_id3');
-        mpg123_icy                      := GetAndCheckProc('mpg123_icy');
-        mpg123_icy2utf8                 := GetAndCheckProc('mpg123_icy2utf8');
-        // mpg123 advanced parameter API - - - - - - - - - - - - - - - - - - - -
-        mpg123_parnew                   := GetAndCheckProc('mpg123_parnew');
-        mpg123_new_pars                 := GetAndCheckProc('mpg123_new_pars');
-        mpg123_delete_pars              := GetAndCheckProc('mpg123_delete_pars');
-        mpg123_fmt_none                 := GetAndCheckProc('mpg123_fmt_none');
-        mpg123_fmt_all                  := GetAndCheckProc('mpg123_fmt_all');
-        mpg123_fmt                      := GetAndCheckProc('mpg123_fmt');
-        mpg123_fmt_support              := GetAndCheckProc('mpg123_fmt_support');
-        mpg123_par                      := GetAndCheckProc('mpg123_par');
-        mpg123_getpar                   := GetAndCheckProc('mpg123_getpar');
-        // mpg123 low level I/O  - - - - - - - - - - - - - - - - - - - - - - - -
-        mpg123_replace_buffer           := GetAndCheckProc('mpg123_replace_buffer');
-        mpg123_outblock                 := GetAndCheckProc('mpg123_outblock');
-        mpg123_replace_reader           := GetAndCheckProc('mpg123_replace_reader' + LFS_DEF_SUFFIX);
-        mpg123_replace_reader_32        := GetAndCheckProc('mpg123_replace_reader_32');
-        mpg123_replace_reader_64        := GetAndCheckProc('mpg123_replace_reader_64');
-        mpg123_replace_reader_handle    := GetAndCheckProc('mpg123_replace_reader_handle' + LFS_DEF_SUFFIX);
-        mpg123_replace_reader_handle_32 := GetAndCheckProc('mpg123_replace_reader_handle_32');
-        mpg123_replace_reader_handle_64 := GetAndCheckProc('mpg123_replace_reader_handle_64');
-        // internal init and result
-        If InitLib then
-          Result := mpg123_init = MPG123_OK
-        else
-          Result := True;
-      end
-    else Result := False;
-  end
-else Result := True;
+Result := OpenLibraryAndResolveSymbols(LibPath,LibContext,[
+  // mpg123 library and handle setup - - - - - - - - - - - - - - - - - - - - - -
+  Symbol(@@mpg123_init                    ,'mpg123_init'),
+  Symbol(@@mpg123_exit                    ,'mpg123_exit'),
+  Symbol(@@mpg123_new                     ,'mpg123_new'),
+  Symbol(@@mpg123_delete                  ,'mpg123_delete'),
+  // mpg123 params and features  - - - - - - - - - - - - - - - - - - - - - - - -
+  Symbol(@@mpg123_param                   ,'mpg123_param'),
+  Symbol(@@mpg123_getparam                ,'mpg123_getparam'),
+  Symbol(@@mpg123_feature                 ,'mpg123_feature'),
+  // mpg123 error handling - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  Symbol(@@mpg123_plain_strerror          ,'mpg123_plain_strerror'),
+  Symbol(@@mpg123_strerror                ,'mpg123_strerror'),
+  Symbol(@@mpg123_errcode                 ,'mpg123_errcode'),
+  // mpg123 decoder selection  - - - - - - - - - - - - - - - - - - - - - - - - -
+  Symbol(@@mpg123_decoders                ,'mpg123_decoders'),
+  Symbol(@@mpg123_supported_decoders      ,'mpg123_supported_decoders'),
+  Symbol(@@mpg123_decoder                 ,'mpg123_decoder'),
+  Symbol(@@mpg123_current_decoder         ,'mpg123_current_decoder'),
+  // mpg123 output audio format  - - - - - - - - - - - - - - - - - - - - - - - -
+  Symbol(@@mpg123_rates                   ,'mpg123_rates'),
+  Symbol(@@mpg123_encodings               ,'mpg123_encodings'),
+  Symbol(@@mpg123_encsize                 ,'mpg123_encsize'),
+  Symbol(@@mpg123_format_none             ,'mpg123_format_none'),
+  Symbol(@@mpg123_format_all              ,'mpg123_format_all'),
+  Symbol(@@mpg123_format                  ,'mpg123_format'),
+  Symbol(@@mpg123_format_support          ,'mpg123_format_support'),
+  Symbol(@@mpg123_getformat               ,'mpg123_getformat'),
+  Symbol(@@mpg123_getformat2              ,'mpg123_getformat2'),
+  // mpg123 file input and decoding  - - - - - - - - - - - - - - - - - - - - - -
+  Symbol(@@mpg123_open                    ,'mpg123_open' + LFS_DEF_SUFFIX),
+  Symbol(@@mpg123_open_32                 ,'mpg123_open_32'),
+  Symbol(@@mpg123_open_64                 ,'mpg123_open_64'),
+  Symbol(@@mpg123_open_fd                 ,'mpg123_open_fd' + LFS_DEF_SUFFIX),
+  Symbol(@@mpg123_open_fd_32              ,'mpg123_open_fd_32'),
+  Symbol(@@mpg123_open_fd_64              ,'mpg123_open_fd_64'),
+  Symbol(@@mpg123_open_handle             ,'mpg123_open_handle' + LFS_DEF_SUFFIX),
+  Symbol(@@mpg123_open_handle_32          ,'mpg123_open_handle_32'),
+  Symbol(@@mpg123_open_handle_64          ,'mpg123_open_handle_64'),
+  Symbol(@@mpg123_open_feed               ,'mpg123_open_feed'),
+  Symbol(@@mpg123_close                   ,'mpg123_close'),
+  Symbol(@@mpg123_read                    ,'mpg123_read'),
+  Symbol(@@mpg123_feed                    ,'mpg123_feed'),
+  Symbol(@@mpg123_decode                  ,'mpg123_decode'),
+  Symbol(@@mpg123_decode_frame            ,'mpg123_decode_frame' + LFS_DEF_SUFFIX),
+  Symbol(@@mpg123_decode_frame_32         ,'mpg123_decode_frame_32'),
+  Symbol(@@mpg123_decode_frame_64         ,'mpg123_decode_frame_64'),
+  Symbol(@@mpg123_framebyframe_decode     ,'mpg123_framebyframe_decode' + LFS_DEF_SUFFIX),
+  Symbol(@@mpg123_framebyframe_decode_32  ,'mpg123_framebyframe_decode_32'),
+  Symbol(@@mpg123_framebyframe_decode_64  ,'mpg123_framebyframe_decode_64'),
+  Symbol(@@mpg123_framebyframe_next       ,'mpg123_framebyframe_next'),
+  Symbol(@@mpg123_framedata               ,'mpg123_framedata'),
+  Symbol(@@mpg123_framepos                ,'mpg123_framepos' + LFS_DEF_SUFFIX),
+  Symbol(@@mpg123_framepos_32             ,'mpg123_framepos_32'),
+  Symbol(@@mpg123_framepos_64             ,'mpg123_framepos_64'),
+  // mpg123 position and seeking - - - - - - - - - - - - - - - - - - - - - - - -
+  Symbol(@@mpg123_tell                    ,'mpg123_tell' + LFS_DEF_SUFFIX),
+  Symbol(@@mpg123_tell_32                 ,'mpg123_tell_32'),
+  Symbol(@@mpg123_tell_64                 ,'mpg123_tell_64'),
+  Symbol(@@mpg123_tellframe               ,'mpg123_tellframe' + LFS_DEF_SUFFIX),
+  Symbol(@@mpg123_tellframe_32            ,'mpg123_tellframe_32'),
+  Symbol(@@mpg123_tellframe_64            ,'mpg123_tellframe_64'),
+  Symbol(@@mpg123_tell_stream             ,'mpg123_tell_stream' + LFS_DEF_SUFFIX),
+  Symbol(@@mpg123_tell_stream_32          ,'mpg123_tell_stream_32'),
+  Symbol(@@mpg123_tell_stream_64          ,'mpg123_tell_stream_64'),
+  Symbol(@@mpg123_seek                    ,'mpg123_seek' + LFS_DEF_SUFFIX),
+  Symbol(@@mpg123_seek_32                 ,'mpg123_seek_32'),
+  Symbol(@@mpg123_seek_64                 ,'mpg123_seek_64'),
+  Symbol(@@mpg123_feedseek                ,'mpg123_feedseek' + LFS_DEF_SUFFIX),
+  Symbol(@@mpg123_feedseek_32             ,'mpg123_feedseek_32'),
+  Symbol(@@mpg123_feedseek_64             ,'mpg123_feedseek_64'),
+  Symbol(@@mpg123_seek_frame              ,'mpg123_seek_frame' + LFS_DEF_SUFFIX),
+  Symbol(@@mpg123_seek_frame_32           ,'mpg123_seek_frame_32'),
+  Symbol(@@mpg123_seek_frame_64           ,'mpg123_seek_frame_64'),
+  Symbol(@@mpg123_timeframe               ,'mpg123_timeframe' + LFS_DEF_SUFFIX),
+  Symbol(@@mpg123_timeframe_32            ,'mpg123_timeframe_32'),
+  Symbol(@@mpg123_timeframe_64            ,'mpg123_timeframe_64'),
+  Symbol(@@mpg123_index                   ,'mpg123_index' + LFS_DEF_SUFFIX),
+  Symbol(@@mpg123_index_32                ,'mpg123_index_32'),
+  Symbol(@@mpg123_index_64                ,'mpg123_index_64'),
+  Symbol(@@mpg123_set_index               ,'mpg123_set_index' + LFS_DEF_SUFFIX),
+  Symbol(@@mpg123_set_index_32            ,'mpg123_set_index_32'),
+  Symbol(@@mpg123_set_index_64            ,'mpg123_set_index_64'),
+  Symbol(@@mpg123_position                ,'mpg123_position' + LFS_DEF_SUFFIX),
+  Symbol(@@mpg123_position_32             ,'mpg123_position_32'),
+  Symbol(@@mpg123_position_64             ,'mpg123_position_64'),
+  // mpg123 volume and equalizer - - - - - - - - - - - - - - - - - - - - - - - -
+  Symbol(@@mpg123_eq                      ,'mpg123_eq'),
+  Symbol(@@mpg123_geteq                   ,'mpg123_geteq'),
+  Symbol(@@mpg123_reset_eq                ,'mpg123_reset_eq'),
+  Symbol(@@mpg123_volume                  ,'mpg123_volume'),
+  Symbol(@@mpg123_volume_change           ,'mpg123_volume_change'),
+  Symbol(@@mpg123_getvolume               ,'mpg123_getvolume'),
+  // mpg123 status and information - - - - - - - - - - - - - - - - - - - - - - -
+  Symbol(@@mpg123_info                    ,'mpg123_info'),
+  Symbol(@@mpg123_safe_buffer             ,'mpg123_safe_buffer'),
+  Symbol(@@mpg123_scan                    ,'mpg123_scan'),
+  Symbol(@@mpg123_framelength             ,'mpg123_framelength' + LFS_DEF_SUFFIX),
+  Symbol(@@mpg123_framelength_32          ,'mpg123_framelength_32'),
+  Symbol(@@mpg123_framelength_64          ,'mpg123_framelength_64'),
+  Symbol(@@mpg123_length                  ,'mpg123_length' + LFS_DEF_SUFFIX),
+  Symbol(@@mpg123_length_32               ,'mpg123_length_32'),
+  Symbol(@@mpg123_length_64               ,'mpg123_length_64'),
+  Symbol(@@mpg123_set_filesize            ,'mpg123_set_filesize' + LFS_DEF_SUFFIX),
+  Symbol(@@mpg123_set_filesize_32         ,'mpg123_set_filesize_32'),
+  Symbol(@@mpg123_set_filesize_64         ,'mpg123_set_filesize_64'),
+  Symbol(@@mpg123_tpf                     ,'mpg123_tpf'),
+  Symbol(@@mpg123_spf                     ,'mpg123_spf'),
+  Symbol(@@mpg123_clip                    ,'mpg123_clip'),
+  // mpg123 decoder/stream state information - - - - - - - - - - - - - - - - - -
+  Symbol(@@mpg123_getstate                ,'mpg123_getstate'),
+  // mpg123 string handling functions  - - - - - - - - - - - - - - - - - - - - -
+  Symbol(@@mpg123_init_string             ,'mpg123_init_string'),
+  Symbol(@@mpg123_free_string             ,'mpg123_free_string'),
+  Symbol(@@mpg123_resize_string           ,'mpg123_resize_string'),
+  Symbol(@@mpg123_grow_string             ,'mpg123_grow_string'),
+  Symbol(@@mpg123_copy_string             ,'mpg123_copy_string'),
+  Symbol(@@mpg123_add_string              ,'mpg123_add_string'),
+  Symbol(@@mpg123_add_substring           ,'mpg123_add_substring'),
+  Symbol(@@mpg123_set_string              ,'mpg123_set_string'),
+  Symbol(@@mpg123_set_substring           ,'mpg123_set_substring'),
+  Symbol(@@mpg123_strlen                  ,'mpg123_strlen'),
+  Symbol(@@mpg123_chomp_string            ,'mpg123_chomp_string'),
+  // mpg123 text encodings - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  Symbol(@@mpg123_enc_from_id3            ,'mpg123_enc_from_id3'),
+  Symbol(@@mpg123_store_utf8              ,'mpg123_store_utf8'),
+  // mpg123 metadata handling  - - - - - - - - - - - - - - - - - - - - - - - - -
+  Symbol(@@mpg123_meta_check              ,'mpg123_meta_check'),
+  Symbol(@@mpg123_meta_free               ,'mpg123_meta_free'),
+  Symbol(@@mpg123_id3                     ,'mpg123_id3'),
+  Symbol(@@mpg123_icy                     ,'mpg123_icy'),
+  Symbol(@@mpg123_icy2utf8                ,'mpg123_icy2utf8'),
+  // mpg123 advanced parameter API - - - - - - - - - - - - - - - - - - - - - - -
+  Symbol(@@mpg123_parnew                  ,'mpg123_parnew'),
+  Symbol(@@mpg123_new_pars                ,'mpg123_new_pars'),
+  Symbol(@@mpg123_delete_pars             ,'mpg123_delete_pars'),
+  Symbol(@@mpg123_fmt_none                ,'mpg123_fmt_none'),
+  Symbol(@@mpg123_fmt_all                 ,'mpg123_fmt_all'),
+  Symbol(@@mpg123_fmt                     ,'mpg123_fmt'),
+  Symbol(@@mpg123_fmt_support             ,'mpg123_fmt_support'),
+  Symbol(@@mpg123_par                     ,'mpg123_par'),
+  Symbol(@@mpg123_getpar                  ,'mpg123_getpar'),
+  // mpg123 low level I/O  - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  Symbol(@@mpg123_replace_buffer          ,'mpg123_replace_buffer'),
+  Symbol(@@mpg123_outblock                ,'mpg123_outblock'),
+  Symbol(@@mpg123_replace_reader          ,'mpg123_replace_reader' + LFS_DEF_SUFFIX),
+  Symbol(@@mpg123_replace_reader_32       ,'mpg123_replace_reader_32'),
+  Symbol(@@mpg123_replace_reader_64       ,'mpg123_replace_reader_64'),
+  Symbol(@@mpg123_replace_reader_handle   ,'mpg123_replace_reader_handle' + LFS_DEF_SUFFIX),
+  Symbol(@@mpg123_replace_reader_handle_32,'mpg123_replace_reader_handle_32'),
+  Symbol(@@mpg123_replace_reader_handle_64,'mpg123_replace_reader_handle_64')],True) = 135;
+// init library
+If Result and InitLib then
+  Result := mpg123_init = MPG123_OK;
 end;
 
 //------------------------------------------------------------------------------
 
 procedure mpg123_Finalize(FinalLib: Boolean = True);
-begin
-If mpg123_LibHandle <> 0 then
-  begin
-    If FinalLib then
-      mpg123_exit;
-    FreeLibrary(mpg123_LibHandle);
-    mpg123_LibHandle := 0;
-  end;
+begin   
+If FinalLib then
+  mpg123_exit;
+CloseLibrary(LibContext);
 end;
+
+//==============================================================================
+
+initialization
+  LibContext := DefaultLibraryContext;
 
 end.

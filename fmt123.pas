@@ -14,11 +14,11 @@
 
     More info about the mpg123 library can be found at: https://www.mpg123.de
 
-  Version 1.0.3 (2019-11-04)
+  Version 1.0.4 (2020-08-11)
 
   Build against library version 1.25.13
 
-  Last change 2020-08-02
+  Last change 2020-08-11
 
   ©2018-2020 František Milt
 
@@ -37,8 +37,9 @@
       github.com/TheLazyTomcat/Bnd.mpg123
 
   Dependencies:
-    AuxTypes - github.com/TheLazyTomcat/Lib.AuxTypes
-    StrRect  - github.com/TheLazyTomcat/Lib.StrRect
+    AuxTypes    - github.com/TheLazyTomcat/Lib.AuxTypes
+    StrRect     - github.com/TheLazyTomcat/Lib.StrRect
+    DynLibUtils - github.com/TheLazyTomcat/Lib.DynLibUtils
 
   Translation notes:
     - macros were expanded in-place or implemented as normal functions

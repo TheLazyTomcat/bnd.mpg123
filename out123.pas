@@ -14,11 +14,11 @@
 
     More info about the mpg123 library can be found at: https://www.mpg123.de
 
-  Version 1.0.3 (2019-11-04)
+  Version 1.0.4 (2020-08-11)
 
   Build against library version 1.25.13 (libout123 API version 2)
 
-  Last change 2020-08-02
+  Last change 2020-08-11
 
   ©2018-2020 František Milt
 
@@ -37,8 +37,9 @@
       github.com/TheLazyTomcat/Bnd.mpg123
 
   Dependencies:
-    AuxTypes - github.com/TheLazyTomcat/Lib.AuxTypes
-    StrRect  - github.com/TheLazyTomcat/Lib.StrRect
+    AuxTypes    - github.com/TheLazyTomcat/Lib.AuxTypes
+    StrRect     - github.com/TheLazyTomcat/Lib.StrRect
+    DynLibUtils - github.com/TheLazyTomcat/Lib.DynLibUtils
 
   Translation notes:
     - macros were expanded in-place or implemented as normal functions
@@ -606,8 +607,7 @@ procedure out123_Finalize;
 implementation
 
 uses
-  Windows, SysUtils,
-  StrRect;
+  DynLibUtils;
 
 //== Macro implementation ======================================================
 
@@ -654,71 +654,55 @@ end;
 //==============================================================================
 
 var
-  out123_LibHandle: THandle = 0;
+  LibContext: TDLULibraryContext;
 
 //------------------------------------------------------------------------------  
 
 Function out123_Initialize(const LibPath: String = out123_LibFileName): Boolean;
-
-  Function GetAndCheckProc(const ProcName: String): Pointer;
-  begin
-    Result := GetProcAddress(out123_LibHandle,PChar(StrToWin(ProcName)));
-    If not Assigned(Result) then
-      raise EMPG123Exception.CreateFmt('out123_Initialize:GetAndCheckProc: Address of function "%s" could not be obtained.',[ProcName]);
-  end;
-
 begin
-If out123_LibHandle = 0 then
-  begin
-    out123_LibHandle := LoadLibraryEx(PChar(StrToWin(LibPath)),0,0);
-    If out123_LibHandle <> 0 then
-      begin
-        out123_new            := GetAndCheckProc('out123_new');
-        out123_del            := GetAndCheckProc('out123_del');
-        out123_strerror       := GetAndCheckProc('out123_strerror');
-        out123_errcode        := GetAndCheckProc('out123_errcode');
-        out123_plain_strerror := GetAndCheckProc('out123_plain_strerror');
-        out123_set_buffer     := GetAndCheckProc('out123_set_buffer');
-        out123_param          := GetAndCheckProc('out123_param');
-        out123_getparam       := GetAndCheckProc('out123_getparam');
-        out123_param_from     := GetAndCheckProc('out123_param_from');
-        out123_drivers        := GetAndCheckProc('out123_drivers');
-        out123_open           := GetAndCheckProc('out123_open');
-        out123_driver_info    := GetAndCheckProc('out123_driver_info');
-        out123_close          := GetAndCheckProc('out123_close');
-        out123_encodings      := GetAndCheckProc('out123_encodings');
-        out123_encsize        := GetAndCheckProc('out123_encsize');
-        out123_formats        := GetAndCheckProc('out123_formats');
-        out123_enc_list       := GetAndCheckProc('out123_enc_list');
-        out123_enc_byname     := GetAndCheckProc('out123_enc_byname');
-        out123_enc_name       := GetAndCheckProc('out123_enc_name');
-        out123_enc_longname   := GetAndCheckProc('out123_enc_longname');
-        out123_start          := GetAndCheckProc('out123_start');
-        out123_pause          := GetAndCheckProc('out123_pause');
-        out123_continue       := GetAndCheckProc('out123_continue');
-        out123_stop           := GetAndCheckProc('out123_stop');
-        out123_play           := GetAndCheckProc('out123_play');
-        out123_drop           := GetAndCheckProc('out123_drop');
-        out123_drain          := GetAndCheckProc('out123_drain');
-        out123_ndrain         := GetAndCheckProc('out123_ndrain');
-        out123_buffered       := GetAndCheckProc('out123_buffered');
-        out123_getformat      := GetAndCheckProc('out123_getformat');
-        Result := True;
-      end
-    else Result := False;
-  end
-else Result := True;
+Result := OpenLibraryAndResolveSymbols(LibPath,LibContext,[
+  Symbol(@@out123_new           ,'out123_new'),
+  Symbol(@@out123_del           ,'out123_del'),
+  Symbol(@@out123_strerror      ,'out123_strerror'),
+  Symbol(@@out123_errcode       ,'out123_errcode'),
+  Symbol(@@out123_plain_strerror,'out123_plain_strerror'),
+  Symbol(@@out123_set_buffer    ,'out123_set_buffer'),
+  Symbol(@@out123_param         ,'out123_param'),
+  Symbol(@@out123_getparam      ,'out123_getparam'),
+  Symbol(@@out123_param_from    ,'out123_param_from'),
+  Symbol(@@out123_drivers       ,'out123_drivers'),
+  Symbol(@@out123_open          ,'out123_open'),
+  Symbol(@@out123_driver_info   ,'out123_driver_info'),
+  Symbol(@@out123_close         ,'out123_close'),
+  Symbol(@@out123_encodings     ,'out123_encodings'),
+  Symbol(@@out123_encsize       ,'out123_encsize'),
+  Symbol(@@out123_formats       ,'out123_formats'),
+  Symbol(@@out123_enc_list      ,'out123_enc_list'),
+  Symbol(@@out123_enc_byname    ,'out123_enc_byname'),
+  Symbol(@@out123_enc_name      ,'out123_enc_name'),
+  Symbol(@@out123_enc_longname  ,'out123_enc_longname'),
+  Symbol(@@out123_start         ,'out123_start'),
+  Symbol(@@out123_pause         ,'out123_pause'),
+  Symbol(@@out123_continue      ,'out123_continue'),
+  Symbol(@@out123_stop          ,'out123_stop'),
+  Symbol(@@out123_play          ,'out123_play'),
+  Symbol(@@out123_drop          ,'out123_drop'),
+  Symbol(@@out123_drain         ,'out123_drain'),
+  Symbol(@@out123_ndrain        ,'out123_ndrain'),
+  Symbol(@@out123_buffered      ,'out123_buffered'),
+  Symbol(@@out123_getformat     ,'out123_getformat')],True) = 30;
 end;
 
 //------------------------------------------------------------------------------
 
 procedure out123_Finalize;
 begin
-If out123_LibHandle <> 0 then
-  begin
-    FreeLibrary(out123_LibHandle);
-    out123_LibHandle := 0;
-  end;
+CloseLibrary(LibContext);
 end;
+
+//==============================================================================
+
+initialization
+  LibContext := DefaultLibraryContext;
 
 end.
