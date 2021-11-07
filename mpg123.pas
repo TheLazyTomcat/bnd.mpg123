@@ -18,9 +18,9 @@
 
   Build against library version 1.25.13 (mpg123 API version 44)
 
-  Last change 2020-08-11
+  Last change 2021-11-07
 
-  ©2018-2020 František Milt
+  ©2018-2021 František Milt
 
   Contacts:
     František Milt: frantisek.milt@gmail.com
@@ -37,9 +37,10 @@
       github.com/TheLazyTomcat/Bnd.mpg123
 
   Dependencies:
-    AuxTypes    - github.com/TheLazyTomcat/Lib.AuxTypes
-    StrRect     - github.com/TheLazyTomcat/Lib.StrRect
-    DynLibUtils - github.com/TheLazyTomcat/Lib.DynLibUtils
+    AuxTypes       - github.com/TheLazyTomcat/Lib.AuxTypes
+    StrRect        - github.com/TheLazyTomcat/Lib.StrRect
+    DynLibUtils    - github.com/TheLazyTomcat/Lib.DynLibUtils
+    WindowsVersion - github.com/TheLazyTomcat/Lib.WindowsVersion
 
   Translation notes:
     - macros were expanded in-place or implemented as normal functions
