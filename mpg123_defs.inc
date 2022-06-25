@@ -17,8 +17,14 @@
   calling default library functions (e.g. mpg123_open calls lib:mpg123_open).
 
   Defined by default.
+
+  To disable/undefine this symbol in a project without changing this library,
+  define project-wide symbol mpg123_LARGE_FILES_SUPPORT_Off.
 }
 {$DEFINE LARGE_FILES_SUPPORT}
+{$IFDEF mpg123_LARGE_FILES_SUPPORT_Off}
+  {$UNDEF LARGE_FILES_SUPPORT}
+{$ENDIF}
 
 {
   LEAK_WARNINGS
@@ -28,6 +34,12 @@
   such function will introduce a memory leak.
   When this symbol is defined, such functions are marked with warning messages.
 
-  Not defined by default.  
+  Not defined by default.
+
+  To enable/define this symbol in a project without changing this library,
+  define project-wide symbol mpg123_LEAK_WARNINGS_On.
 }
 {.$DEFINE LEAK_WARNINGS}
+{$IFDEF mpg123_LEAK_WARNINGS_On}
+  {$DEFINE LEAK_WARNINGS}
+{$ENDIF} 

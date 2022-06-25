@@ -18,9 +18,9 @@
 
   Build against library version 1.25.13 (libout123 API version 2)
 
-  Last change 2021-11-07
+  Last change 2022-06-25
 
-  ©2018-2021 František Milt
+  ©2018-2022 František Milt
 
   Contacts:
     František Milt: frantisek.milt@gmail.com
