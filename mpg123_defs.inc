@@ -3,7 +3,8 @@
 {$IFEND}
 
 {$IFDEF FPC}
-  {$MODE Delphi}
+  {$MODE ObjFPC}
+  {$MODESWITCH ClassicProcVars+}
 {$ENDIF}
 {$H+}
 

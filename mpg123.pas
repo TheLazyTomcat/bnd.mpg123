@@ -18,7 +18,7 @@
 
   Build against library version 1.25.13 (mpg123 API version 44)
 
-  Last change 2022-06-25
+  Last change 2022-09-24
 
   ©2018-2022 František Milt
 
@@ -41,6 +41,7 @@
     StrRect        - github.com/TheLazyTomcat/Lib.StrRect
     DynLibUtils    - github.com/TheLazyTomcat/Lib.DynLibUtils
     WindowsVersion - github.com/TheLazyTomcat/Lib.WindowsVersion
+    SimpleCPUID    - github.com/TheLazyTomcat/Lib.SimpleCPUID
 
   Translation notes:
     - macros were expanded in-place or implemented as normal functions
@@ -1718,7 +1719,7 @@ Result := OpenLibraryAndResolveSymbols(LibPath,LibContext,[
   Symbol(@@mpg123_replace_reader_handle_64,'mpg123_replace_reader_handle_64')],True) = 135;
 // init library
 If Result and InitLib then
-  Result := mpg123_init = MPG123_OK;
+  Result := mpg123_init() = MPG123_OK;
 end;
 
 //------------------------------------------------------------------------------
